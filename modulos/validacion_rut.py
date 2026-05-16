@@ -1,8 +1,16 @@
+"""
+Módulo: validacion_rut.py
+Descripción: Validación de RUT chileno usando el algoritmo oficial del módulo 11.
+             Muestra el procedimiento paso a paso y retorna los dígitos extraídos.
+"""
+
+
 def parsear_rut(rut_str: str) -> tuple[str, str]:
     """
     Separa el cuerpo y el dígito verificador desde un string con formato
-    '12345678-9', '12345678-K' o '123456789' (sin guión).
-    Retorna (cuerpo, dv) como strings, o lanza ValueError si el formato es inválido.
+    '12345678-9', '12.345.678-9', '12345678-K' o sin guión.
+    Normaliza el cuerpo a 8 dígitos con ceros a la izquierda.
+    Retorna (cuerpo, dv) o lanza ValueError si el formato es inválido.
     """
     rut_limpio = rut_str.strip().upper().replace(".", "")
 
@@ -27,15 +35,15 @@ def parsear_rut(rut_str: str) -> tuple[str, str]:
     return cuerpo.zfill(8), dv
 
 
-def calcular_digito_verificador(cuerpo: str) -> tuple[str, list[dict]]:
+def calcular_digito_verificador(cuerpo: str, dv_ingresado: str) -> dict:
     """
-    aui se calcula el digito verificador esperado usando el algoritmo del módulo 11
-     se retorna (dv_calculado, pasos) donde 'pasos' es una lista de dicts con
-    el detalle de cada multiplicación para mostrar en pantalla.
-    """
-    # Secuencia de factores: 2, 3, 4, 5, 6, 7 (se repite si hay más de 6 dígitos)
-    factores = [2, 3, 4, 5, 6, 7]
+    Aplica el algoritmo módulo 11 al cuerpo del RUT, compara el DV calculado
+    con el ingresado y retorna el procedimiento completo.
 
+    Retorna dict con: valido, dv_calculado, dv_ingresado, digitos,
+                      pasos, suma_total, resto.
+    """
+    factores = [2, 3, 4, 5, 6, 7]
     digitos_invertidos = [int(d) for d in reversed(cuerpo)]
     pasos = []
     suma_total = 0
@@ -62,23 +70,21 @@ def calcular_digito_verificador(cuerpo: str) -> tuple[str, list[dict]]:
     else:
         dv_calculado = str(resultado)
 
-    return dv_calculado, pasos, suma_total, resto
+    return {
+        "valido": dv_ingresado == dv_calculado,
+        "dv_calculado": dv_calculado,
+        "dv_ingresado": dv_ingresado,
+        "digitos": [int(c) for c in cuerpo],
+        "pasos": pasos,
+        "suma_total": suma_total,
+        "resto": resto,
+    }
 
 
 def validar_rut(rut_str: str) -> dict:
     """
-    Valida un RUT chileno completo.
-
-    Retorna un dict con:
-        - valido (bool)
-        - cuerpo (str)
-        - dv_ingresado (str)
-        - dv_calculado (str)
-        - digitos (list[int]): lista [d1, d2, ..., d8] (con ceros a la izquierda si aplica)
-        - pasos (list[dict]): detalle del procedimiento
-        - mensaje (str): descripción del resultado
-        - suma_total (int)
-        - resto (int)
+    Valida un RUT chileno completo. Retorna dict con todos los campos
+    del procedimiento más 'cuerpo' y 'mensaje'.
     """
     try:
         cuerpo, dv_ingresado = parsear_rut(rut_str)
@@ -95,51 +101,39 @@ def validar_rut(rut_str: str) -> dict:
             "resto": 0,
         }
 
-    dv_calculado, pasos, suma_total, resto = calcular_digito_verificador(cuerpo)
-    es_valido = dv_ingresado == dv_calculado
+    resultado = calcular_digito_verificador(cuerpo, dv_ingresado)
+    resultado["cuerpo"] = cuerpo
 
-    # Normalizar cuerpo a 8 dígitos (rellenar con ceros a la izquierda)
-    cuerpo_normalizado = cuerpo.zfill(8)
-    digitos = [int(c) for c in cuerpo_normalizado]
-
-    if es_valido:
-        mensaje = f"RUT {cuerpo}-{dv_ingresado} es VÁLIDO."
+    if resultado["valido"]:
+        resultado["mensaje"] = f"RUT {cuerpo}-{dv_ingresado} es VÁLIDO."
     else:
-        mensaje = (
+        resultado["mensaje"] = (
             f"RUT {cuerpo}-{dv_ingresado} es INVÁLIDO. "
-            f"El dígito verificador esperado es '{dv_calculado}', pero se ingresó '{dv_ingresado}'."
+            f"El dígito verificador esperado es '{resultado['dv_calculado']}', "
+            f"pero se ingresó '{dv_ingresado}'."
         )
 
-    return {
-        "valido": es_valido,
-        "mensaje": mensaje,
-        "cuerpo": cuerpo,
-        "dv_ingresado": dv_ingresado,
-        "dv_calculado": dv_calculado,
-        "digitos": digitos,
-        "pasos": pasos,
-        "suma_total": suma_total,
-        "resto": resto,
-    }
+    return resultado
 
 
 def formatear_procedimiento(resultado: dict) -> str:
     """
-    aqui se genera un string con el procedimiento completo del módulo 11,
-    listo para mostrarse en la interfaz o en consola
+    Genera un string con el procedimiento completo del módulo 11,
+    listo para mostrarse en la interfaz o en consola.
     """
     if not resultado["cuerpo"]:
         return f"Error: {resultado['mensaje']}"
 
     cuerpo = resultado["cuerpo"]
     dv = resultado["dv_ingresado"]
+    dv_calc = resultado["dv_calculado"]
     lineas = []
 
     lineas.append("=" * 50)
     lineas.append("  VALIDACIÓN DE RUT — ALGORITMO MÓDULO 11")
     lineas.append("=" * 50)
     lineas.append(f"\nRUT ingresado: {cuerpo}-{dv}")
-    lineas.append(f"Cuerpo (normalizado a 8 dígitos): {cuerpo.zfill(8)}")
+    lineas.append(f"Cuerpo (normalizado a 8 dígitos): {cuerpo}")
     lineas.append("\nPaso 1: Invertir el cuerpo del RUT y multiplicar")
     lineas.append("        por la secuencia 2, 3, 4, 5, 6, 7 (repetida)\n")
     lineas.append(f"  {'Pos':<5} {'Dígito':<10} {'Factor':<10} {'Producto':<10} {'Suma acum.'}")
@@ -155,7 +149,6 @@ def formatear_procedimiento(resultado: dict) -> str:
     lineas.append(f"Paso 3: Resto = {resultado['suma_total']} mod 11 = {resultado['resto']}")
     lineas.append(f"Paso 4: DV calculado = 11 - {resultado['resto']} = {11 - resultado['resto']}")
 
-    dv_calc = resultado["dv_calculado"]
     if dv_calc == "0":
         lineas.append("        Como el resultado fue 11 → DV = 0")
     elif dv_calc == "K":
@@ -170,14 +163,13 @@ def formatear_procedimiento(resultado: dict) -> str:
     return "\n".join(lineas)
 
 
-# test
 if __name__ == "__main__":
     ruts_prueba = [
-        "12345678-9",   # inventado — puede ser inválido
-        "76354771-K",   # ejemplo conocido
-        "11111111-1",   # dígitos iguales
-        "99999999-X",   # dv inválido
-        "7635477-K",    # cuerpo de 7 digitos
+        "12.345.678-9",
+        "76354771-K",
+        "7635477-K",
+        "11111111-1",
+        "99999999-X",
     ]
 
     for rut in ruts_prueba:
