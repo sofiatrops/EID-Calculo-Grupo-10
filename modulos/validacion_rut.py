@@ -1,10 +1,3 @@
-"""
-Módulo: validacion_rut.py
-Descripción: Validación de RUT chileno usando el algoritmo oficial del módulo 11.
-             Muestra el procedimiento paso a paso y retorna los dígitos extraídos.
-"""
-
-
 def parsear_rut(rut_str: str) -> tuple[str, str]:
     """
     Separa el cuerpo y el dígito verificador desde un string con formato
@@ -162,7 +155,7 @@ def formatear_procedimiento(resultado: dict) -> str:
 
     return "\n".join(lineas)
 
-
+#test
 if __name__ == "__main__":
     ruts_prueba = [
         "12.345.678-9",
