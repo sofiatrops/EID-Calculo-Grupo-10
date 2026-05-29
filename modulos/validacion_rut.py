@@ -40,3 +40,5 @@ def calcular_digito_verificador(cuerpo: str) -> tuple[str, list[dict]]:
     Calcula el dígito verificador del RUT usando el algoritmo Módulo 11
     y retorna el dígito verificador calculado junto con el detalle paso a paso
     """
+
+#test
