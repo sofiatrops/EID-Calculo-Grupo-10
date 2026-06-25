@@ -14,6 +14,7 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from validacion_rut import validar_rut, formatear_procedimiento
 from construccion_coeficientes import construir_coeficientes, formatear_construccion
 from clasificador_conicas import ClasificadorDeConicas
+from transformacion_canonica import transformar_a_canonica, formatear_transformacion
 
 class VistaConicas(customtkinter.CTkFrame):
     def __init__(self, master, **kwargs):
@@ -142,11 +143,13 @@ class VistaConicas(customtkinter.CTkFrame):
             self.mostrar_error(str(e))
             return
 
+        canonica = transformar_a_canonica(coeficientes)
+
         self.etiqueta_ecuacion_general.configure(
             text=f"Ecuación General: {coeficientes['ecuacion']}"
         )
         self.etiqueta_ecuacion_canonica.configure(
-            text="Ecuación Canónica: (pendiente — ver KAN-9)"
+            text=f"Ecuación Canónica: {canonica.get('ecuacion_canonica', canonica['tipo'])}"
         )
 
         procedimiento = (
@@ -155,6 +158,8 @@ class VistaConicas(customtkinter.CTkFrame):
             + formatear_construccion(coeficientes)
             + "\n\n"
             + resumen_clasificacion
+            + "\n\n"
+            + formatear_transformacion(canonica)
         )
         self.texto_procedimiento.configure(text=procedimiento)
 
