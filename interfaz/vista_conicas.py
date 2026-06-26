@@ -1,5 +1,6 @@
 import sys
 import os
+import re
 
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _MODULOS_PATH = os.path.join(_PROJECT_ROOT, "modulos")
@@ -21,6 +22,7 @@ class VistaConicas(customtkinter.CTkFrame):
     def __init__(self, master, **kwargs):
         super().__init__(master, **kwargs)
         self.graficador = GraficadorDeConicas()
+        self.ultima_canonica = None
         self.configurar_layout()
         self.crear_widgets()
         self._mostrar_grafica_vacia()
@@ -102,27 +104,40 @@ class VistaConicas(customtkinter.CTkFrame):
         self.frame_defensa.grid(row=1, column=0, padx=10, pady=10, sticky="ew")
 
         self.etiqueta_defensa = customtkinter.CTkLabel(self.frame_defensa, text="Campos para Defensa Oral", font=("Arial", 14, "bold"))
-        self.etiqueta_defensa.grid(row=0, column=0, columnspan=2, padx=10, pady=5)
+        self.etiqueta_defensa.grid(row=0, column=0, columnspan=3, padx=10, pady=5)
 
         self.etiqueta_centro = customtkinter.CTkLabel(self.frame_defensa, text="Centro (h, k):")
         self.etiqueta_centro.grid(row=1, column=0, padx=10, pady=5, sticky="e")
         self.entrada_centro = customtkinter.CTkEntry(self.frame_defensa)
         self.entrada_centro.grid(row=1, column=1, padx=10, pady=5, sticky="ew")
+        self.feedback_centro = customtkinter.CTkLabel(self.frame_defensa, text="", width=70)
+        self.feedback_centro.grid(row=1, column=2, padx=5, pady=5)
 
         self.etiqueta_vertices = customtkinter.CTkLabel(self.frame_defensa, text="Vértices:")
         self.etiqueta_vertices.grid(row=2, column=0, padx=10, pady=5, sticky="e")
         self.entrada_vertices = customtkinter.CTkEntry(self.frame_defensa)
         self.entrada_vertices.grid(row=2, column=1, padx=10, pady=5, sticky="ew")
+        self.feedback_vertices = customtkinter.CTkLabel(self.frame_defensa, text="", width=70)
+        self.feedback_vertices.grid(row=2, column=2, padx=5, pady=5)
 
         self.etiqueta_focos = customtkinter.CTkLabel(self.frame_defensa, text="Focos:")
         self.etiqueta_focos.grid(row=3, column=0, padx=10, pady=5, sticky="e")
         self.entrada_focos = customtkinter.CTkEntry(self.frame_defensa)
         self.entrada_focos.grid(row=3, column=1, padx=10, pady=5, sticky="ew")
+        self.feedback_focos = customtkinter.CTkLabel(self.frame_defensa, text="", width=70)
+        self.feedback_focos.grid(row=3, column=2, padx=5, pady=5)
 
         self.etiqueta_semiejes = customtkinter.CTkLabel(self.frame_defensa, text="Semiejes:")
         self.etiqueta_semiejes.grid(row=4, column=0, padx=10, pady=5, sticky="e")
         self.entrada_semiejes = customtkinter.CTkEntry(self.frame_defensa)
         self.entrada_semiejes.grid(row=4, column=1, padx=10, pady=5, sticky="ew")
+        self.feedback_semiejes = customtkinter.CTkLabel(self.frame_defensa, text="", width=70)
+        self.feedback_semiejes.grid(row=4, column=2, padx=5, pady=5)
+
+        self.boton_comprobar = customtkinter.CTkButton(
+            self.frame_defensa, text="Comprobar Respuestas", command=self.comprobar_respuestas
+        )
+        self.boton_comprobar.grid(row=5, column=0, columnspan=3, padx=10, pady=(10, 5))
 
         self.frame_defensa.grid_columnconfigure(1, weight=1)
 
@@ -170,6 +185,8 @@ class VistaConicas(customtkinter.CTkFrame):
         )
         self._mostrar_procedimiento(procedimiento)
         self._graficar_canonica(canonica)
+        self.ultima_canonica = canonica
+        self._limpiar_feedback_defensa()
 
     def _mostrar_procedimiento(self, texto):
         self.texto_procedimiento.configure(state="normal")
@@ -214,6 +231,102 @@ class VistaConicas(customtkinter.CTkFrame):
         self.figura.tight_layout()
         self.canvas_grafica.draw()
 
+    def _valores_esperados(self, canonica):
+        """
+        Determina, según el tipo de cónica, qué campos de defensa aplican
+        y cuáles son los números que debería contener cada uno.
+        Un valor None significa que ese campo no aplica para este tipo.
+        """
+        tipo = canonica["tipo"]
+
+        if tipo == "Circunferencia":
+            h, k = canonica["centro"]
+            return {
+                "centro": [h, k],
+                "vertices": None,
+                "focos": None,
+                "semiejes": [canonica["radio"]],
+            }
+        if tipo == "Elipse":
+            h, k = canonica["centro"]
+            return {
+                "centro": [h, k],
+                "vertices": [coord for punto in canonica["vertices"] for coord in punto],
+                "focos": [coord for punto in canonica["focos"] for coord in punto],
+                "semiejes": [canonica["semieje_mayor"], canonica["semieje_menor"]],
+            }
+        if tipo == "Hipérbola":
+            h, k = canonica["centro"]
+            return {
+                "centro": [h, k],
+                "vertices": [coord for punto in canonica["vertices"] for coord in punto],
+                "focos": [coord for punto in canonica["focos"] for coord in punto],
+                "semiejes": [canonica["semieje_transverso"], canonica["semieje_conjugado"]],
+            }
+        if tipo.startswith("Parábola") and "degenerada" not in tipo:
+            vh, vk = canonica["vertice"]
+            fh, fk = canonica["foco"]
+            return {
+                "centro": None,
+                "vertices": [vh, vk],
+                "focos": [fh, fk],
+                "semiejes": None,
+            }
+        return {"centro": None, "vertices": None, "focos": None, "semiejes": None}
+
+    def _extraer_numeros(self, texto):
+        return [float(n) for n in re.findall(r"-?\d+\.?\d*", texto)]
+
+    def _numeros_coinciden(self, encontrados, esperados, tolerancia=0.1):
+        restantes = list(encontrados)
+        for valor_esperado in esperados:
+            coincidencia = next(
+                (c for c in restantes if abs(c - valor_esperado) <= tolerancia), None
+            )
+            if coincidencia is None:
+                return False
+            restantes.remove(coincidencia)
+        return True
+
+    def _limpiar_feedback_defensa(self):
+        for feedback in (
+            self.feedback_centro, self.feedback_vertices,
+            self.feedback_focos, self.feedback_semiejes,
+        ):
+            feedback.configure(text="")
+
+    def comprobar_respuestas(self):
+        if self.ultima_canonica is None:
+            self.mostrar_error("Primero valida un RUT para poder comprobar las respuestas.")
+            return
+        self.limpiar_error()
+
+        esperados = self._valores_esperados(self.ultima_canonica)
+        campos = {
+            "centro": (self.entrada_centro, self.feedback_centro),
+            "vertices": (self.entrada_vertices, self.feedback_vertices),
+            "focos": (self.entrada_focos, self.feedback_focos),
+            "semiejes": (self.entrada_semiejes, self.feedback_semiejes),
+        }
+
+        for clave, (entrada, feedback) in campos.items():
+            valor_esperado = esperados[clave]
+
+            if valor_esperado is None:
+                feedback.configure(text="N/A", text_color="gray")
+                continue
+
+            texto = entrada.get().strip()
+            if texto == "":
+                feedback.configure(text="vacío", text_color="orange")
+                continue
+
+            encontrados = self._extraer_numeros(texto)
+            if self._numeros_coinciden(encontrados, valor_esperado):
+                feedback.configure(text="✓ Correcto", text_color="green")
+            else:
+                feedback.configure(text="✗ Revisar", text_color="red")
+
     def mostrar_error(self, mensaje):
         self.etiqueta_error.configure(text=mensaje)
 
@@ -241,5 +354,7 @@ class VistaConicas(customtkinter.CTkFrame):
         self.entrada_vertices.delete(0, "end")
         self.entrada_focos.delete(0, "end")
         self.entrada_semiejes.delete(0, "end")
+        self._limpiar_feedback_defensa()
+        self.ultima_canonica = None
 
         self._mostrar_grafica_vacia()
