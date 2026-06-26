@@ -19,6 +19,9 @@ from modulos.transformacion_canonica import transformar_a_canonica, formatear_tr
 from modulos.graficador import GraficadorDeConicas
 
 class VistaConicas(customtkinter.CTkFrame):
+    CARACTERES_RUT = set("0123456789.kK-")
+    CARACTERES_NUMERICOS = set("0123456789.,()- ")
+
     def __init__(self, master, **kwargs):
         super().__init__(master, **kwargs)
         self.graficador = GraficadorDeConicas()
@@ -46,7 +49,8 @@ class VistaConicas(customtkinter.CTkFrame):
         
         self.entrada_rut = customtkinter.CTkEntry(self.frame_entrada, placeholder_text="Ej: 12345678-9")
         self.entrada_rut.grid(row=0, column=1, padx=10, pady=10)
-        
+        self.entrada_rut.bind("<KeyRelease>", lambda e: self._filtrar_entrada(self.entrada_rut, self.CARACTERES_RUT))
+
         self.boton_validar = customtkinter.CTkButton(self.frame_entrada, text="Validar RUT", command=self.validar_rut_presionado)
         self.boton_validar.grid(row=0, column=2, padx=10, pady=10)
 
@@ -110,6 +114,7 @@ class VistaConicas(customtkinter.CTkFrame):
         self.etiqueta_centro.grid(row=1, column=0, padx=10, pady=5, sticky="e")
         self.entrada_centro = customtkinter.CTkEntry(self.frame_defensa)
         self.entrada_centro.grid(row=1, column=1, padx=10, pady=5, sticky="ew")
+        self.entrada_centro.bind("<KeyRelease>", lambda e: self._filtrar_entrada(self.entrada_centro, self.CARACTERES_NUMERICOS))
         self.feedback_centro = customtkinter.CTkLabel(self.frame_defensa, text="", width=70)
         self.feedback_centro.grid(row=1, column=2, padx=5, pady=5)
 
@@ -117,6 +122,7 @@ class VistaConicas(customtkinter.CTkFrame):
         self.etiqueta_vertices.grid(row=2, column=0, padx=10, pady=5, sticky="e")
         self.entrada_vertices = customtkinter.CTkEntry(self.frame_defensa)
         self.entrada_vertices.grid(row=2, column=1, padx=10, pady=5, sticky="ew")
+        self.entrada_vertices.bind("<KeyRelease>", lambda e: self._filtrar_entrada(self.entrada_vertices, self.CARACTERES_NUMERICOS))
         self.feedback_vertices = customtkinter.CTkLabel(self.frame_defensa, text="", width=70)
         self.feedback_vertices.grid(row=2, column=2, padx=5, pady=5)
 
@@ -124,6 +130,7 @@ class VistaConicas(customtkinter.CTkFrame):
         self.etiqueta_focos.grid(row=3, column=0, padx=10, pady=5, sticky="e")
         self.entrada_focos = customtkinter.CTkEntry(self.frame_defensa)
         self.entrada_focos.grid(row=3, column=1, padx=10, pady=5, sticky="ew")
+        self.entrada_focos.bind("<KeyRelease>", lambda e: self._filtrar_entrada(self.entrada_focos, self.CARACTERES_NUMERICOS))
         self.feedback_focos = customtkinter.CTkLabel(self.frame_defensa, text="", width=70)
         self.feedback_focos.grid(row=3, column=2, padx=5, pady=5)
 
@@ -131,6 +138,7 @@ class VistaConicas(customtkinter.CTkFrame):
         self.etiqueta_semiejes.grid(row=4, column=0, padx=10, pady=5, sticky="e")
         self.entrada_semiejes = customtkinter.CTkEntry(self.frame_defensa)
         self.entrada_semiejes.grid(row=4, column=1, padx=10, pady=5, sticky="ew")
+        self.entrada_semiejes.bind("<KeyRelease>", lambda e: self._filtrar_entrada(self.entrada_semiejes, self.CARACTERES_NUMERICOS))
         self.feedback_semiejes = customtkinter.CTkLabel(self.frame_defensa, text="", width=70)
         self.feedback_semiejes.grid(row=4, column=2, padx=5, pady=5)
 
@@ -230,6 +238,14 @@ class VistaConicas(customtkinter.CTkFrame):
         self.graficador.configurar_grafico(self.eje)
         self.figura.tight_layout()
         self.canvas_grafica.draw()
+
+    def _filtrar_entrada(self, entrada, caracteres_permitidos):
+        """Elimina en tiempo real cualquier caracter que no este en caracteres_permitidos."""
+        texto = entrada.get()
+        filtrado = "".join(c for c in texto if c in caracteres_permitidos)
+        if filtrado != texto:
+            entrada.delete(0, "end")
+            entrada.insert(0, filtrado)
 
     def _valores_esperados(self, canonica):
         """

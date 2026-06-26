@@ -11,11 +11,13 @@ if _MODULOS_PATH not in sys.path:
 import customtkinter as ctk
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-from analisis_limites import analizar_limites
-from grafica_funciones_tramos import _generar_puntos, _evaluar_funcion
+from modulos.analisis_limites import analizar_limites
+from modulos.grafica_funciones_tramos import _generar_puntos, _evaluar_funcion
 
 
 class VistaLimites(ctk.CTkToplevel):
+    CARACTERES_RUT = set("0123456789.kK-")
+
     def __init__(self, master=None):
         super().__init__(master)
         self.title("Análisis de Límites y Continuidad")
@@ -52,11 +54,17 @@ class VistaLimites(ctk.CTkToplevel):
             rut_frame, placeholder_text="12345678-9"
         )
         self.rut_entry.grid(row=0, column=1, padx=(0, 10), pady=10, sticky="ew")
+        self.rut_entry.bind("<KeyRelease>", lambda e: self._filtrar_entrada(self.rut_entry, self.CARACTERES_RUT))
 
         self.generar_btn = ctk.CTkButton(
             rut_frame, text="Generar", command=self._on_generar
         )
         self.generar_btn.grid(row=0, column=2, padx=(0, 10), pady=10)
+
+        self.error_label = ctk.CTkLabel(
+            rut_frame, text="", text_color="red", font=ctk.CTkFont(size=12)
+        )
+        self.error_label.grid(row=1, column=0, columnspan=3, padx=10, pady=(0, 5), sticky="w")
 
     def _build_content(self):
         self.main_frame = ctk.CTkScrollableFrame(self)
@@ -215,16 +223,47 @@ class VistaLimites(ctk.CTkToplevel):
         self.fig.tight_layout()
         self.canvas.draw()
 
+    def _filtrar_entrada(self, entrada, caracteres_permitidos):
+        """Elimina en tiempo real cualquier caracter que no este en caracteres_permitidos."""
+        texto = entrada.get()
+        filtrado = "".join(c for c in texto if c in caracteres_permitidos)
+        if filtrado != texto:
+            entrada.delete(0, "end")
+            entrada.insert(0, filtrado)
+
+    def _mostrar_error(self, mensaje):
+        self.error_label.configure(text=mensaje)
+
+    def _limpiar_error(self):
+        self.error_label.configure(text="")
+
+    def _limpiar_resultados(self):
+        self.resultado = None
+        self.func_expresion.configure(text="")
+        for fila in self.tabla_labels:
+            for lbl in fila:
+                lbl.configure(text="—")
+        self._mostrar_grafica_vacia()
+        self.proc_text.configure(state="normal")
+        self.proc_text.delete("1.0", "end")
+        self.proc_text.configure(state="disabled")
+        self._limpiar_defensa()
+
     def _on_generar(self):
         rut = self.rut_entry.get().strip()
         if not rut:
+            self._mostrar_error("El campo RUT no puede estar vacío.")
+            self._limpiar_resultados()
             return
 
-        self.resultado = analizar_limites(rut)
-        if "error" in self.resultado:
-            self.func_expresion.configure(text=f"Error: {self.resultado['error']}")
+        resultado = analizar_limites(rut)
+        if "error" in resultado:
+            self._mostrar_error(resultado["error"])
+            self._limpiar_resultados()
             return
 
+        self._limpiar_error()
+        self.resultado = resultado
         self._actualizar_funcion()
         self._actualizar_tabla()
         self._actualizar_grafica()
