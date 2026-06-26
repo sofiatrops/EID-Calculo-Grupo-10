@@ -23,6 +23,8 @@ class AplicacionPrincipal(ctk.CTk):
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(1, weight=1)
 
+        self.ventana_limites = None
+
         self._build_navegacion()
         self._build_contenido()
         self.mostrar_conicas()
@@ -33,16 +35,12 @@ class AplicacionPrincipal(ctk.CTk):
 
         ctk.CTkLabel(
             nav,
-            text="Evaluación Integrada de Desempeño — MAT1186",
+            text="Evaluación Integrada de Desempeño — MAT1186 (Módulo de Cónicas)",
             font=ctk.CTkFont(size=18, weight="bold"),
         ).pack(side="left", padx=10, pady=10)
 
         ctk.CTkButton(
-            nav, text="Módulo de Cónicas", command=self.mostrar_conicas
-        ).pack(side="right", padx=5, pady=10)
-
-        ctk.CTkButton(
-            nav, text="Módulo de Límites", command=self.abrir_limites
+            nav, text="Abrir Módulo de Límites", command=self.abrir_limites
         ).pack(side="right", padx=5, pady=10)
 
     def _build_contenido(self):
@@ -58,7 +56,11 @@ class AplicacionPrincipal(ctk.CTk):
         vista.grid(row=0, column=0, sticky="nsew")
 
     def abrir_limites(self):
-        VistaLimites(self)
+        if self.ventana_limites is not None and self.ventana_limites.winfo_exists():
+            self.ventana_limites.lift()
+            self.ventana_limites.focus()
+            return
+        self.ventana_limites = VistaLimites(self)
 
 
 if __name__ == "__main__":

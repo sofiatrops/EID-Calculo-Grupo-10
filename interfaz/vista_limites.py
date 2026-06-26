@@ -153,6 +153,7 @@ class VistaLimites(ctk.CTkToplevel):
         # --- Section 4: Procedimiento ---
         self.proc_frame = ctk.CTkFrame(self.main_frame)
         self.proc_frame.grid(row=3, column=0, padx=5, pady=5, sticky="ew")
+        self.proc_frame.grid_columnconfigure(0, weight=1)
 
         ctk.CTkLabel(
             self.proc_frame,
@@ -161,7 +162,9 @@ class VistaLimites(ctk.CTkToplevel):
         ).grid(row=0, column=0, padx=10, pady=(10, 5), sticky="w")
 
         self.proc_text = ctk.CTkTextbox(
-            self.proc_frame, height=180, wrap="word", state="disabled"
+            self.proc_frame, height=320, wrap="word",
+            font=ctk.CTkFont(size=13),
+            state="disabled",
         )
         self.proc_text.grid(row=1, column=0, padx=10, pady=(0, 10), sticky="ew")
 
@@ -246,7 +249,7 @@ class VistaLimites(ctk.CTkToplevel):
         self._mostrar_grafica_vacia()
         self.proc_text.configure(state="normal")
         self.proc_text.delete("1.0", "end")
-        self.proc_text.configure(state="disabled")
+        self.proc_text.configure(state="disabled", height=320)
         self._limpiar_defensa()
 
     def _on_generar(self):
@@ -358,12 +361,19 @@ class VistaLimites(ctk.CTkToplevel):
         self.canvas.draw()
 
     def _actualizar_procedimiento(self):
+        pasos = self.resultado["pasos_justificacion"]
+
         self.proc_text.configure(state="normal")
         self.proc_text.delete("1.0", "end")
-        pasos = self.resultado["pasos_justificacion"]
-        for paso in pasos:
-            self.proc_text.insert("end", paso + "\n\n")
+        for i, paso in enumerate(pasos):
+            self.proc_text.insert("end", paso)
+            if i < len(pasos) - 1:
+                self.proc_text.insert("end", "\n\n")
         self.proc_text.configure(state="disabled")
+
+        lineas_estimadas = sum(max(1, (len(paso) // 70) + 1) + 1 for paso in pasos)
+        altura = min(max(280, lineas_estimadas * 24), 480)
+        self.proc_text.configure(height=altura)
 
     def _limpiar_defensa(self):
         for entry in self.defensa_entries.values():
