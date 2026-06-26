@@ -15,23 +15,16 @@ from modulos.analisis_limites import analizar_limites
 from modulos.grafica_funciones_tramos import _generar_puntos, _evaluar_funcion
 
 
-class VistaLimites(ctk.CTkToplevel):
-    CARACTERES_RUT = set("0123456789.kK-")
-
-    def __init__(self, master=None):
-        super().__init__(master)
-        self.title("Análisis de Límites y Continuidad")
-        self.geometry("1150x850")
-        self.minsize(900, 600)
+class VistaLimites(ctk.CTkFrame):
+    def __init__(self, master=None, **kwargs):
+        super().__init__(master, **kwargs)
+        self.resultado = None
 
         self.grid_columnconfigure(0, weight=1)
-        self.grid_rowconfigure(2, weight=1)
+        self.grid_rowconfigure(1, weight=1)
 
         self._build_header()
-        self._build_rut_input()
         self._build_content()
-
-        self.resultado = None
 
     def _build_header(self):
         header = ctk.CTkLabel(
@@ -41,34 +34,9 @@ class VistaLimites(ctk.CTkToplevel):
         )
         header.grid(row=0, column=0, pady=(15, 5), padx=20, sticky="ew")
 
-    def _build_rut_input(self):
-        rut_frame = ctk.CTkFrame(self)
-        rut_frame.grid(row=1, column=0, padx=20, pady=(5, 10), sticky="ew")
-        rut_frame.grid_columnconfigure(1, weight=1)
-
-        ctk.CTkLabel(
-            rut_frame, text="RUT:", font=ctk.CTkFont(size=14)
-        ).grid(row=0, column=0, padx=(10, 5), pady=10)
-
-        self.rut_entry = ctk.CTkEntry(
-            rut_frame, placeholder_text="12345678-9"
-        )
-        self.rut_entry.grid(row=0, column=1, padx=(0, 10), pady=10, sticky="ew")
-        self.rut_entry.bind("<KeyRelease>", lambda e: self._filtrar_entrada(self.rut_entry, self.CARACTERES_RUT))
-
-        self.generar_btn = ctk.CTkButton(
-            rut_frame, text="Generar", command=self._on_generar
-        )
-        self.generar_btn.grid(row=0, column=2, padx=(0, 10), pady=10)
-
-        self.error_label = ctk.CTkLabel(
-            rut_frame, text="", text_color="red", font=ctk.CTkFont(size=12)
-        )
-        self.error_label.grid(row=1, column=0, columnspan=3, padx=10, pady=(0, 5), sticky="w")
-
     def _build_content(self):
         self.main_frame = ctk.CTkScrollableFrame(self)
-        self.main_frame.grid(row=2, column=0, padx=20, pady=(0, 15), sticky="nsew")
+        self.main_frame.grid(row=1, column=0, padx=20, pady=(0, 15), sticky="nsew")
         self.main_frame.grid_columnconfigure(0, weight=1)
 
         # --- Section 1: Función ---
@@ -226,21 +194,16 @@ class VistaLimites(ctk.CTkToplevel):
         self.fig.tight_layout()
         self.canvas.draw()
 
-    def _filtrar_entrada(self, entrada, caracteres_permitidos):
-        """Elimina en tiempo real cualquier caracter que no este en caracteres_permitidos."""
-        texto = entrada.get()
-        filtrado = "".join(c for c in texto if c in caracteres_permitidos)
-        if filtrado != texto:
-            entrada.delete(0, "end")
-            entrada.insert(0, filtrado)
+    def procesar_rut_valido(self, resultado_rut):
+        rut_str = f"{resultado_rut['cuerpo']}-{resultado_rut['dv_ingresado']}"
+        self.resultado = analizar_limites(rut_str)
+        self._actualizar_funcion()
+        self._actualizar_tabla()
+        self._actualizar_grafica()
+        self._actualizar_procedimiento()
+        self._limpiar_defensa()
 
-    def _mostrar_error(self, mensaje):
-        self.error_label.configure(text=mensaje)
-
-    def _limpiar_error(self):
-        self.error_label.configure(text="")
-
-    def _limpiar_resultados(self):
+    def limpiar_resultados(self):
         self.resultado = None
         self.func_expresion.configure(text="")
         for fila in self.tabla_labels:
@@ -250,27 +213,6 @@ class VistaLimites(ctk.CTkToplevel):
         self.proc_text.configure(state="normal")
         self.proc_text.delete("1.0", "end")
         self.proc_text.configure(state="disabled", height=320)
-        self._limpiar_defensa()
-
-    def _on_generar(self):
-        rut = self.rut_entry.get().strip()
-        if not rut:
-            self._mostrar_error("El campo RUT no puede estar vacío.")
-            self._limpiar_resultados()
-            return
-
-        resultado = analizar_limites(rut)
-        if "error" in resultado:
-            self._mostrar_error(resultado["error"])
-            self._limpiar_resultados()
-            return
-
-        self._limpiar_error()
-        self.resultado = resultado
-        self._actualizar_funcion()
-        self._actualizar_tabla()
-        self._actualizar_grafica()
-        self._actualizar_procedimiento()
         self._limpiar_defensa()
 
     def _actualizar_funcion(self):
@@ -379,29 +321,3 @@ class VistaLimites(ctk.CTkToplevel):
         for entry in self.defensa_entries.values():
             entry.delete(0, "end")
         self.defensa_justificacion.delete("1.0", "end")
-
-
-if __name__ == "__main__":
-    ctk.set_appearance_mode("System")
-    ctk.set_default_color_theme("green")
-
-    app = ctk.CTk()
-    app.title("EID Cálculo")
-    app.geometry("400x200")
-
-    ctk.CTkLabel(
-        app,
-        text="Evaluación Integrada de Desempeño\nMAT1186 - Introducción al Cálculo",
-        font=ctk.CTkFont(size=16, weight="bold"),
-        justify="center",
-    ).pack(pady=30, padx=20)
-
-    ctk.CTkButton(
-        app,
-        text="Abrir Módulo de Límites",
-        command=lambda: VistaLimites(app),
-        width=250,
-        height=40,
-    ).pack(pady=10)
-
-    app.mainloop()

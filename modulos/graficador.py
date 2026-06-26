@@ -105,7 +105,6 @@ class GraficadorDeConicas:
             coordenadas_y.append(y)
 
         ax.plot(coordenadas_x, coordenadas_y, label="Circunferencia", color="blue")
-        ax.scatter([centro_x], [centro_y], color="red", zorder=5, label="Centro")
 
     def graficar_elipse(self, ax, centro_x, centro_y, semieje_a, semieje_b):
         pi = self.utilidades.obtener_numero_pi()
@@ -125,17 +124,6 @@ class GraficadorDeConicas:
             coordenadas_y.append(y)
 
         ax.plot(coordenadas_x, coordenadas_y, label="Elipse", color="green")
-        ax.scatter([centro_x], [centro_y], color="red", zorder=5, label="Centro")
-
-        vertice_derecho_x = centro_x + semieje_a
-        vertice_izquierdo_x = centro_x - semieje_a
-        vertice_superior_y = centro_y + semieje_b
-        vertice_inferior_y = centro_y - semieje_b
-
-        lista_vertices_x = [vertice_derecho_x, vertice_izquierdo_x, centro_x, centro_x]
-        lista_vertices_y = [centro_y, centro_y, vertice_superior_y, vertice_inferior_y]
-
-        ax.scatter(lista_vertices_x, lista_vertices_y, color="orange", marker="s", zorder=5, label="Vértices")
 
     def graficar_hiperbola(self, ax, centro_x, centro_y, semieje_a, semieje_b, es_hiperbola_horizontal):
         rango_t = self.utilidades.generar_rango_de_valores(-2.5, 2.5, 0.1)
@@ -170,20 +158,6 @@ class GraficadorDeConicas:
 
         ax.plot(rama_positiva_x, rama_positiva_y, color="purple", label="Hipérbola")
         ax.plot(rama_negativa_x, rama_negativa_y, color="purple")
-        ax.scatter([centro_x], [centro_y], color="red", zorder=5, label="Centro")
-
-        if es_hiperbola_horizontal:
-            vertice_derecho_x = centro_x + semieje_a
-            vertice_izquierdo_x = centro_x - semieje_a
-            lista_vertices_x = [vertice_derecho_x, vertice_izquierdo_x]
-            lista_vertices_y = [centro_y, centro_y]
-        else:
-            vertice_superior_y = centro_y + semieje_b
-            vertice_inferior_y = centro_y - semieje_b
-            lista_vertices_x = [centro_x, centro_x]
-            lista_vertices_y = [vertice_superior_y, vertice_inferior_y]
-
-        ax.scatter(lista_vertices_x, lista_vertices_y, color="orange", marker="s", zorder=5, label="Vértices")
 
     def graficar_parabola(self, ax, vertice_x, vertice_y, factor_apertura_a, es_parabola_vertical):
         rango_t = self.utilidades.generar_rango_de_valores(-10.0, 10.0, 0.2)
@@ -203,7 +177,6 @@ class GraficadorDeConicas:
             coordenadas_y.append(y)
 
         ax.plot(coordenadas_x, coordenadas_y, color="cyan", label="Parábola")
-        ax.scatter([vertice_x], [vertice_y], color="orange", marker="s", zorder=5, label="Vértice")
 
     def configurar_grafico(self, ax):
         ax.axhline(0, color="black", linewidth=1.5)

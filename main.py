@@ -11,56 +11,100 @@ for _path in (_PROJECT_ROOT, _MODULOS_PATH, _INTERFAZ_PATH):
 import customtkinter as ctk
 from interfaz.vista_conicas import VistaConicas
 from interfaz.vista_limites import VistaLimites
+from modulos.validacion_rut import validar_rut
 
 
 class AplicacionPrincipal(ctk.CTk):
+    CARACTERES_RUT = set("0123456789.kK-")
+
     def __init__(self):
         super().__init__()
         self.title("EID Cálculo — Cónicas y Límites a partir del RUT")
-        self.geometry("1200x800")
-        self.minsize(900, 600)
+        self.geometry("1300x900")
+        self.minsize(1000, 700)
 
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(1, weight=1)
 
-        self.ventana_limites = None
+        self._build_entrada_rut()
+        self._build_tabs()
 
-        self._build_navegacion()
-        self._build_contenido()
-        self.mostrar_conicas()
-
-    def _build_navegacion(self):
-        nav = ctk.CTkFrame(self)
-        nav.grid(row=0, column=0, padx=20, pady=(15, 5), sticky="ew")
+    def _build_entrada_rut(self):
+        frame = ctk.CTkFrame(self)
+        frame.grid(row=0, column=0, padx=20, pady=(15, 5), sticky="ew")
+        frame.grid_columnconfigure(1, weight=1)
 
         ctk.CTkLabel(
-            nav,
-            text="Evaluación Integrada de Desempeño — MAT1186 (Módulo de Cónicas)",
+            frame,
+            text="Evaluación Integrada de Desempeño — MAT1186",
             font=ctk.CTkFont(size=18, weight="bold"),
-        ).pack(side="left", padx=10, pady=10)
+        ).grid(row=0, column=0, columnspan=4, padx=10, pady=(10, 5), sticky="w")
 
-        ctk.CTkButton(
-            nav, text="Abrir Módulo de Límites", command=self.abrir_limites
-        ).pack(side="right", padx=5, pady=10)
+        ctk.CTkLabel(frame, text="RUT:", font=ctk.CTkFont(size=14)).grid(
+            row=1, column=0, padx=(10, 5), pady=10
+        )
 
-    def _build_contenido(self):
-        self.contenido = ctk.CTkFrame(self)
-        self.contenido.grid(row=1, column=0, padx=20, pady=(5, 15), sticky="nsew")
-        self.contenido.grid_columnconfigure(0, weight=1)
-        self.contenido.grid_rowconfigure(0, weight=1)
+        self.entrada_rut = ctk.CTkEntry(frame, placeholder_text="Ej: 12345678-9")
+        self.entrada_rut.grid(row=1, column=1, padx=(0, 10), pady=10, sticky="ew")
+        self.entrada_rut.bind(
+            "<KeyRelease>", lambda e: self._filtrar_entrada(self.entrada_rut, self.CARACTERES_RUT)
+        )
 
-    def mostrar_conicas(self):
-        for widget in self.contenido.winfo_children():
-            widget.destroy()
-        vista = VistaConicas(self.contenido)
-        vista.grid(row=0, column=0, sticky="nsew")
+        ctk.CTkButton(frame, text="Analizar RUT", command=self.analizar_rut).grid(
+            row=1, column=2, padx=5, pady=10
+        )
+        ctk.CTkButton(frame, text="Limpiar Todo", command=self.limpiar_todo).grid(
+            row=1, column=3, padx=(5, 10), pady=10
+        )
 
-    def abrir_limites(self):
-        if self.ventana_limites is not None and self.ventana_limites.winfo_exists():
-            self.ventana_limites.lift()
-            self.ventana_limites.focus()
+        self.etiqueta_error = ctk.CTkLabel(frame, text="", text_color="red")
+        self.etiqueta_error.grid(row=2, column=0, columnspan=4, padx=10, pady=(0, 5), sticky="w")
+
+    def _build_tabs(self):
+        self.tabview = ctk.CTkTabview(self)
+        self.tabview.grid(row=1, column=0, padx=20, pady=(5, 15), sticky="nsew")
+
+        tab_conicas = self.tabview.add("Cónicas")
+        tab_limites = self.tabview.add("Límites")
+
+        tab_conicas.grid_columnconfigure(0, weight=1)
+        tab_conicas.grid_rowconfigure(0, weight=1)
+        tab_limites.grid_columnconfigure(0, weight=1)
+        tab_limites.grid_rowconfigure(0, weight=1)
+
+        self.vista_conicas = VistaConicas(tab_conicas)
+        self.vista_conicas.grid(row=0, column=0, sticky="nsew")
+
+        self.vista_limites = VistaLimites(tab_limites)
+        self.vista_limites.grid(row=0, column=0, sticky="nsew")
+
+    def _filtrar_entrada(self, entrada, caracteres_permitidos):
+        texto = entrada.get()
+        filtrado = "".join(c for c in texto if c in caracteres_permitidos)
+        if filtrado != texto:
+            entrada.delete(0, "end")
+            entrada.insert(0, filtrado)
+
+    def analizar_rut(self):
+        rut = self.entrada_rut.get().strip()
+        if not rut:
+            self.etiqueta_error.configure(text="El campo RUT no puede estar vacío.")
             return
-        self.ventana_limites = VistaLimites(self)
+
+        resultado_rut = validar_rut(rut)
+        if not resultado_rut["valido"]:
+            self.etiqueta_error.configure(text=resultado_rut["mensaje"])
+            return
+
+        self.etiqueta_error.configure(text="")
+        self.vista_conicas.procesar_rut_valido(resultado_rut)
+        self.vista_limites.procesar_rut_valido(resultado_rut)
+
+    def limpiar_todo(self):
+        self.entrada_rut.delete(0, "end")
+        self.etiqueta_error.configure(text="")
+        self.vista_conicas.limpiar_campos()
+        self.vista_limites.limpiar_resultados()
 
 
 if __name__ == "__main__":

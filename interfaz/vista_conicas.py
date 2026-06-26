@@ -12,14 +12,13 @@ if _MODULOS_PATH not in sys.path:
 import customtkinter
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-from modulos.validacion_rut import validar_rut, formatear_procedimiento
+from modulos.validacion_rut import formatear_procedimiento
 from modulos.construccion_coeficientes import construir_coeficientes, formatear_construccion
 from modulos.clasificador_conicas import ClasificadorDeConicas
 from modulos.transformacion_canonica import transformar_a_canonica, formatear_transformacion
 from modulos.graficador import GraficadorDeConicas
 
 class VistaConicas(customtkinter.CTkFrame):
-    CARACTERES_RUT = set("0123456789.kK-")
     CARACTERES_NUMERICOS = set("0123456789.,()- ")
 
     def __init__(self, master, **kwargs):
@@ -45,22 +44,15 @@ class VistaConicas(customtkinter.CTkFrame):
     def crear_panel_superior(self):
         self.frame_entrada = customtkinter.CTkFrame(self)
         self.frame_entrada.grid(row=0, column=0, columnspan=2, padx=10, pady=10, sticky="ew")
-        
-        self.etiqueta_rut = customtkinter.CTkLabel(self.frame_entrada, text="Ingrese RUT:")
-        self.etiqueta_rut.grid(row=0, column=0, padx=10, pady=10)
-        
-        self.entrada_rut = customtkinter.CTkEntry(self.frame_entrada, placeholder_text="Ej: 12345678-9")
-        self.entrada_rut.grid(row=0, column=1, padx=10, pady=10)
-        self.entrada_rut.bind("<KeyRelease>", lambda e: self._filtrar_entrada(self.entrada_rut, self.CARACTERES_RUT))
 
-        self.boton_validar = customtkinter.CTkButton(self.frame_entrada, text="Validar RUT", command=self.validar_rut_presionado)
-        self.boton_validar.grid(row=0, column=2, padx=10, pady=10)
-
-        self.boton_limpiar = customtkinter.CTkButton(self.frame_entrada, text="Limpiar Todo", command=self.limpiar_campos)
-        self.boton_limpiar.grid(row=0, column=3, padx=10, pady=10)
+        self.etiqueta_titulo = customtkinter.CTkLabel(
+            self.frame_entrada, text="Módulo de Cónicas",
+            font=customtkinter.CTkFont(size=16, weight="bold"),
+        )
+        self.etiqueta_titulo.grid(row=0, column=0, padx=10, pady=10, sticky="w")
 
         self.etiqueta_error = customtkinter.CTkLabel(self.frame_entrada, text="", text_color="red")
-        self.etiqueta_error.grid(row=1, column=0, columnspan=4, padx=10, pady=5)
+        self.etiqueta_error.grid(row=1, column=0, padx=10, pady=5, sticky="w")
 
     def crear_panel_izquierdo(self):
         self.frame_izquierdo = customtkinter.CTkFrame(self)
@@ -178,20 +170,6 @@ class VistaConicas(customtkinter.CTkFrame):
         self.boton_comprobar.grid(row=5, column=0, columnspan=3, padx=10, pady=(10, 5))
 
         self.frame_defensa.grid_columnconfigure(1, weight=1)
-
-    def validar_rut_presionado(self):
-        rut_ingresado = self.entrada_rut.get().strip()
-        if rut_ingresado == "":
-            self.mostrar_error("El campo RUT no puede estar vacío")
-            return
-
-        resultado_rut = validar_rut(rut_ingresado)
-        if not resultado_rut["valido"]:
-            self.mostrar_error(resultado_rut["mensaje"])
-            return
-
-        self.limpiar_error()
-        self.procesar_rut_valido(resultado_rut)
 
     def procesar_rut_valido(self, resultado_rut):
         coeficientes = construir_coeficientes(resultado_rut["digitos"], resultado_rut["dv_ingresado"])
@@ -463,7 +441,6 @@ class VistaConicas(customtkinter.CTkFrame):
         self.canvas_grafica.draw()
 
     def limpiar_campos(self):
-        self.entrada_rut.delete(0, "end")
         self.limpiar_error()
         self._mostrar_procedimiento("")
         self.etiqueta_ecuacion_general.configure(text="Ecuación General:")
