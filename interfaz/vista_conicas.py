@@ -26,6 +26,8 @@ class VistaConicas(customtkinter.CTkFrame):
         super().__init__(master, **kwargs)
         self.graficador = GraficadorDeConicas()
         self.ultima_canonica = None
+        self.ultimos_coeficientes = None
+        self.punto_verificado = None
         self.configurar_layout()
         self.crear_widgets()
         self._mostrar_grafica_vacia()
@@ -102,6 +104,34 @@ class VistaConicas(customtkinter.CTkFrame):
         self.widget_grafica.pack(fill="both", expand=True)
 
         self.crear_campos_defensa()
+        self.crear_buscador_puntos()
+
+    def crear_buscador_puntos(self):
+        self.frame_punto = customtkinter.CTkFrame(self.frame_derecho)
+        self.frame_punto.grid(row=2, column=0, padx=10, pady=(0, 10), sticky="ew")
+        self.frame_punto.grid_columnconfigure(1, weight=1)
+
+        self.etiqueta_buscador = customtkinter.CTkLabel(
+            self.frame_punto, text="Verificar si un Punto Pertenece a la Cónica",
+            font=customtkinter.CTkFont(size=14, weight="bold"),
+        )
+        self.etiqueta_buscador.grid(row=0, column=0, columnspan=3, padx=10, pady=5)
+
+        self.etiqueta_punto = customtkinter.CTkLabel(self.frame_punto, text="Punto (x, y):")
+        self.etiqueta_punto.grid(row=1, column=0, padx=10, pady=5, sticky="e")
+        self.entrada_punto = customtkinter.CTkEntry(self.frame_punto, placeholder_text="Ej: 5.85, 2.75")
+        self.entrada_punto.grid(row=1, column=1, padx=10, pady=5, sticky="ew")
+        self.entrada_punto.bind("<KeyRelease>", lambda e: self._filtrar_entrada(self.entrada_punto, self.CARACTERES_NUMERICOS))
+
+        self.boton_verificar_punto = customtkinter.CTkButton(
+            self.frame_punto, text="Verificar Punto", command=self.verificar_punto
+        )
+        self.boton_verificar_punto.grid(row=1, column=2, padx=10, pady=5)
+
+        self.feedback_punto = customtkinter.CTkLabel(
+            self.frame_punto, text="", justify="left", wraplength=320
+        )
+        self.feedback_punto.grid(row=2, column=0, columnspan=3, padx=10, pady=(0, 10), sticky="w")
 
     def crear_campos_defensa(self):
         self.frame_defensa = customtkinter.CTkFrame(self.frame_derecho)
@@ -191,9 +221,14 @@ class VistaConicas(customtkinter.CTkFrame):
             + "\n\n"
             + formatear_transformacion(canonica)
         )
+        self.ultima_canonica = canonica
+        self.ultimos_coeficientes = coeficientes
+        self.punto_verificado = None
+        self.entrada_punto.delete(0, "end")
+        self.feedback_punto.configure(text="")
+
         self._mostrar_procedimiento(procedimiento)
         self._graficar_canonica(canonica)
-        self.ultima_canonica = canonica
         self._limpiar_feedback_defensa()
 
     def _mostrar_procedimiento(self, texto):
@@ -235,9 +270,77 @@ class VistaConicas(customtkinter.CTkFrame):
                 ha="center", va="center", transform=self.eje.transAxes,
             )
 
+        if self.punto_verificado is not None:
+            x, y, pertenece = self.punto_verificado
+            color_punto = "lime" if pertenece else "red"
+            self.eje.plot(
+                x, y, marker="*", markersize=16, color=color_punto,
+                markeredgecolor="black", markeredgewidth=1, linestyle="None",
+                label=f"Punto evaluado ({x}, {y})",
+            )
+
         self.graficador.configurar_grafico(self.eje)
         self.figura.tight_layout()
         self.canvas_grafica.draw()
+
+    def _identificar_punto_especial(self, x, y, canonica, tolerancia=0.3):
+        def cerca(punto):
+            return punto is not None and abs(punto[0] - x) <= tolerancia and abs(punto[1] - y) <= tolerancia
+
+        if cerca(canonica.get("centro")):
+            return "Centro"
+        if cerca(canonica.get("vertice")):
+            return "Vértice"
+        if cerca(canonica.get("foco")):
+            return "Foco"
+        for punto in canonica.get("vertices") or []:
+            if cerca(punto):
+                return "Vértice"
+        for punto in canonica.get("focos") or []:
+            if cerca(punto):
+                return "Foco"
+        for punto in canonica.get("co_vertices") or []:
+            if cerca(punto):
+                return "Co-vértice (semieje menor)"
+        return None
+
+    def verificar_punto(self):
+        if self.ultima_canonica is None or self.ultimos_coeficientes is None:
+            self.mostrar_error("Primero valida un RUT para poder verificar un punto.")
+            return
+        self.limpiar_error()
+
+        numeros = self._extraer_numeros(self.entrada_punto.get())
+        if len(numeros) < 2:
+            self.feedback_punto.configure(
+                text="Ingresa un punto válido, ej: 5.85, 2.75", text_color="orange"
+            )
+            return
+
+        x, y = numeros[0], numeros[1]
+        coef = self.ultimos_coeficientes
+        valor = coef["A"] * x**2 + coef["B"] * y**2 + coef["C"] * x + coef["D"] * y + coef["E"]
+        escala = (
+            abs(coef["A"]) * x**2 + abs(coef["B"]) * y**2
+            + abs(coef["C"]) * x + abs(coef["D"]) * y + abs(coef["E"])
+        )
+        tolerancia = max(0.5, 0.05 * escala)
+        pertenece = abs(valor) <= tolerancia
+
+        if pertenece:
+            texto = f"✓ El punto ({x}, {y}) SÍ pertenece a la cónica.\nA·x² + B·y² + C·x + D·y + E = {valor:.4f} ≈ 0"
+            color = "green"
+        else:
+            texto = f"✗ El punto ({x}, {y}) NO pertenece a la cónica.\nA·x² + B·y² + C·x + D·y + E = {valor:.4f} ≠ 0"
+            color = "red"
+
+        especial = self._identificar_punto_especial(x, y, self.ultima_canonica)
+        if especial:
+            texto += f"\n★ Coincide con: {especial}"
+
+        self.feedback_punto.configure(text=texto, text_color=color)
+        self.punto_verificado = (x, y, pertenece)
+        self._graficar_canonica(self.ultima_canonica)
 
     def _filtrar_entrada(self, entrada, caracteres_permitidos):
         """Elimina en tiempo real cualquier caracter que no este en caracteres_permitidos."""
@@ -372,5 +475,9 @@ class VistaConicas(customtkinter.CTkFrame):
         self.entrada_semiejes.delete(0, "end")
         self._limpiar_feedback_defensa()
         self.ultima_canonica = None
+        self.ultimos_coeficientes = None
+        self.punto_verificado = None
+        self.entrada_punto.delete(0, "end")
+        self.feedback_punto.configure(text="")
 
         self._mostrar_grafica_vacia()
