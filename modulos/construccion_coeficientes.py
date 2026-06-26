@@ -1,11 +1,4 @@
 def calcular_variable_v(dv: str) -> tuple[int, str]:
-    """
-    Calcula la variable auxiliar v según el dígito verificador:
-      v = 10  si DV = 'K'
-      v = 11  si DV = '0'
-      v = DV  si DV es 1–9
-    Retorna (v, explicacion).
-    """
     if dv == "K":
         return 10, "DV = K  →  v = 10"
     elif dv == "0":
@@ -16,10 +9,6 @@ def calcular_variable_v(dv: str) -> tuple[int, str]:
 
 
 def division_exacta(numerador: int, denominador: int) -> tuple[float, str]:
-    """
-    realiza una división y representa el resultado como fracción reducida (string)
-    y como float
-    """
     if denominador == 0:
         raise ZeroDivisionError("El denominador v no puede ser cero.")
 
@@ -162,10 +151,6 @@ def _clasificar_conica(A: float, B: float) -> str:
 
 
 def _formatear_ecuacion(A_frac: str, B_frac: str, C: int, D: int, E: int) -> str:
-    """
-    Construye el string de la ecuación general en forma legible,
-    omitiendo términos con coeficiente 0.
-    """
     terminos = []
 
     def agregar_termino(coef_str: str, variable: str):
@@ -205,10 +190,6 @@ def _formatear_ecuacion(A_frac: str, B_frac: str, C: int, D: int, E: int) -> str
 
 
 def formatear_construccion(resultado: dict) -> str:
-    """
-    Devuelve un string completo con el procedimiento de construcción
-    de coeficientes, listo para mostrarse en pantalla
-    """
     d = resultado["digitos"]
     lineas = []
     lineas.append("=" * 55)
@@ -238,9 +219,9 @@ def formatear_construccion(resultado: dict) -> str:
     return "\n".join(lineas)
 
 
-# ──────────────────────────────────────────────
-#  Ejecución directa para prueba rápida
-# ──────────────────────────────────────────────
+
+# test
+
 if __name__ == "__main__":
     # Ejemplo con dígitos ficticios para verificar la lógica
     digitos_ejemplo = [1, 2, 3, 4, 5, 6, 7, 8]
