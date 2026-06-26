@@ -11,14 +11,16 @@ if _MODULOS_PATH not in sys.path:
 import customtkinter
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-from validacion_rut import validar_rut, formatear_procedimiento
-from construccion_coeficientes import construir_coeficientes, formatear_construccion
-from clasificador_conicas import ClasificadorDeConicas
-from transformacion_canonica import transformar_a_canonica, formatear_transformacion
+from modulos.validacion_rut import validar_rut, formatear_procedimiento
+from modulos.construccion_coeficientes import construir_coeficientes, formatear_construccion
+from modulos.clasificador_conicas import ClasificadorDeConicas
+from modulos.transformacion_canonica import transformar_a_canonica, formatear_transformacion
+from modulos.graficador import GraficadorDeConicas
 
 class VistaConicas(customtkinter.CTkFrame):
     def __init__(self, master, **kwargs):
         super().__init__(master, **kwargs)
+        self.graficador = GraficadorDeConicas()
         self.configurar_layout()
         self.crear_widgets()
         self._mostrar_grafica_vacia()
@@ -55,7 +57,7 @@ class VistaConicas(customtkinter.CTkFrame):
     def crear_panel_izquierdo(self):
         self.frame_izquierdo = customtkinter.CTkFrame(self)
         self.frame_izquierdo.grid(row=1, column=0, padx=10, pady=10, sticky="nsew")
-        self.frame_izquierdo.grid_rowconfigure(2, weight=1)
+        self.frame_izquierdo.grid_rowconfigure(3, weight=1)
         self.frame_izquierdo.grid_columnconfigure(0, weight=1)
 
         self.etiqueta_ecuacion_general = customtkinter.CTkLabel(self.frame_izquierdo, text="Ecuación General:")
@@ -64,13 +66,18 @@ class VistaConicas(customtkinter.CTkFrame):
         self.etiqueta_ecuacion_canonica = customtkinter.CTkLabel(self.frame_izquierdo, text="Ecuación Canónica:")
         self.etiqueta_ecuacion_canonica.grid(row=1, column=0, padx=10, pady=10, sticky="w")
 
-        self.panel_procedimiento = customtkinter.CTkScrollableFrame(self.frame_izquierdo, label_text="Procedimiento Paso a Paso")
-        self.panel_procedimiento.grid(row=2, column=0, padx=10, pady=10, sticky="nsew")
-
-        self.texto_procedimiento = customtkinter.CTkLabel(
-            self.panel_procedimiento, text="", justify="left", wraplength=600
+        self.etiqueta_procedimiento = customtkinter.CTkLabel(
+            self.frame_izquierdo, text="Procedimiento Paso a Paso",
+            font=customtkinter.CTkFont(size=14, weight="bold"),
         )
-        self.texto_procedimiento.pack(padx=10, pady=10, anchor="w")
+        self.etiqueta_procedimiento.grid(row=2, column=0, padx=10, pady=(10, 0), sticky="w")
+
+        self.texto_procedimiento = customtkinter.CTkTextbox(
+            self.frame_izquierdo, wrap="word",
+            font=customtkinter.CTkFont(family="Courier", size=12),
+        )
+        self.texto_procedimiento.grid(row=3, column=0, padx=10, pady=(5, 10), sticky="nsew")
+        self.texto_procedimiento.configure(state="disabled")
 
     def crear_panel_derecho(self):
         self.frame_derecho = customtkinter.CTkFrame(self)
@@ -161,7 +168,51 @@ class VistaConicas(customtkinter.CTkFrame):
             + "\n\n"
             + formatear_transformacion(canonica)
         )
-        self.texto_procedimiento.configure(text=procedimiento)
+        self._mostrar_procedimiento(procedimiento)
+        self._graficar_canonica(canonica)
+
+    def _mostrar_procedimiento(self, texto):
+        self.texto_procedimiento.configure(state="normal")
+        self.texto_procedimiento.delete("1.0", "end")
+        self.texto_procedimiento.insert("1.0", texto)
+        self.texto_procedimiento.configure(state="disabled")
+
+    def _graficar_canonica(self, canonica):
+        self.eje.clear()
+        tipo = canonica["tipo"]
+
+        if tipo == "Circunferencia":
+            h, k = canonica["centro"]
+            self.graficador.graficar_circunferencia(self.eje, h, k, canonica["radio"])
+        elif tipo == "Elipse":
+            h, k = canonica["centro"]
+            if canonica["eje_mayor"] == "x":
+                semieje_x, semieje_y = canonica["semieje_mayor"], canonica["semieje_menor"]
+            else:
+                semieje_x, semieje_y = canonica["semieje_menor"], canonica["semieje_mayor"]
+            self.graficador.graficar_elipse(self.eje, h, k, semieje_x, semieje_y)
+        elif tipo == "Hipérbola":
+            h, k = canonica["centro"]
+            es_horizontal = canonica["eje_transverso"] == "x"
+            self.graficador.graficar_hiperbola(
+                self.eje, h, k,
+                canonica["semieje_transverso"], canonica["semieje_conjugado"],
+                es_horizontal,
+            )
+        elif tipo.startswith("Parábola") and "degenerada" not in tipo:
+            h, k = canonica["vertice"]
+            factor_apertura = 1 / (4 * canonica["p"])
+            es_vertical = "vertical" in tipo
+            self.graficador.graficar_parabola(self.eje, h, k, factor_apertura, es_vertical)
+        else:
+            self.eje.text(
+                0.5, 0.5, "Caso degenerado: no se puede graficar",
+                ha="center", va="center", transform=self.eje.transAxes,
+            )
+
+        self.graficador.configurar_grafico(self.eje)
+        self.figura.tight_layout()
+        self.canvas_grafica.draw()
 
     def mostrar_error(self, mensaje):
         self.etiqueta_error.configure(text=mensaje)
@@ -182,7 +233,7 @@ class VistaConicas(customtkinter.CTkFrame):
     def limpiar_campos(self):
         self.entrada_rut.delete(0, "end")
         self.limpiar_error()
-        self.texto_procedimiento.configure(text="")
+        self._mostrar_procedimiento("")
         self.etiqueta_ecuacion_general.configure(text="Ecuación General:")
         self.etiqueta_ecuacion_canonica.configure(text="Ecuación Canónica:")
         

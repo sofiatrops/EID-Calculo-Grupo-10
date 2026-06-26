@@ -9,8 +9,8 @@ for _path in (_PROJECT_ROOT, _MODULOS_PATH, _INTERFAZ_PATH):
         sys.path.insert(0, _path)
 
 import customtkinter as ctk
-from vista_conicas import VistaConicas
-from vista_limites import VistaLimites
+from interfaz.vista_conicas import VistaConicas
+from interfaz.vista_limites import VistaLimites
 
 
 class AplicacionPrincipal(ctk.CTk):
