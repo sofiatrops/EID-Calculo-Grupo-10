@@ -217,6 +217,8 @@ def _finalizar_hiperbola(h: float, k: float, denom_x: float, denom_y: float, pas
             rf"$\frac{{{_resta_latex('x', h)}^2}}{{{_num_latex(a2)}}} - "
             rf"\frac{{{_resta_latex('y', k)}^2}}{{{_num_latex(b2)}}} = 1$"
         )
+        pendiente = b / a
+        pendiente_simbolo = "b/a"
     else:
         vertices = [(h, k - a), (h, k + a)]
         focos = [(h, k - c), (h, k + c)]
@@ -225,6 +227,21 @@ def _finalizar_hiperbola(h: float, k: float, denom_x: float, denom_y: float, pas
             rf"$\frac{{{_resta_latex('y', k)}^2}}{{{_num_latex(a2)}}} - "
             rf"\frac{{{_resta_latex('x', h)}^2}}{{{_num_latex(b2)}}} = 1$"
         )
+        pendiente = a / b
+        pendiente_simbolo = "a/b"
+
+    intercepto_1 = k - pendiente * h
+    intercepto_2 = k + pendiente * h
+    pasos.append(
+        f"Paso 7: Asíntotas. Pendiente $m = {pendiente_simbolo} = {_num_latex(pendiente)}$. "
+        f"Rectas que pasan por el centro: "
+        f"$y = {_num_latex(pendiente)}x{_termino_latex(intercepto_1)}$ y "
+        f"$y = {_num_latex(-pendiente)}x{_termino_latex(intercepto_2)}$"
+    )
+    asintotas = [
+        f"y = {_num_latex(pendiente)}x{_termino_latex(intercepto_1)}",
+        f"y = {_num_latex(-pendiente)}x{_termino_latex(intercepto_2)}",
+    ]
 
     return {
         "tipo": "Hipérbola",
@@ -235,6 +252,8 @@ def _finalizar_hiperbola(h: float, k: float, denom_x: float, denom_y: float, pas
         "eje_transverso": eje_transverso,
         "vertices": vertices,
         "focos": focos,
+        "asintotas": asintotas,
+        "asintotas_valores": [pendiente, intercepto_1, -pendiente, intercepto_2],
         "ecuacion_canonica": ecuacion_canonica,
         "ecuacion_canonica_latex": ecuacion_canonica_latex,
         "pasos": pasos,
@@ -503,7 +522,7 @@ def formatear_transformacion(resultado: dict) -> str:
     lineas.append("\nElementos geométricos:")
     for clave in ("centro", "vertice", "vertices", "co_vertices", "focos", "foco",
                   "radio", "semieje_mayor", "semieje_menor",
-                  "semieje_transverso", "semieje_conjugado", "directriz"):
+                  "semieje_transverso", "semieje_conjugado", "asintotas", "directriz"):
         if clave in resultado:
             lineas.append(f"  {clave}: {_formatear_valor_geometrico(resultado[clave])}")
 

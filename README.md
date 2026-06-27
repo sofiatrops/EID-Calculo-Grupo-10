@@ -34,8 +34,9 @@ A partir del RUT, el sistema realiza automáticamente:
 
 Además, ambos módulos incluyen:
 
-- **Campos de defensa oral** inicialmente vacíos (centro, vértices, focos, semiejes, directriz / límites laterales,
-  existencia del límite, f(a), continuidad, tipo de discontinuidad) que el estudiante completa manualmente.
+- **Campos de defensa oral** inicialmente vacíos (centro, vértices, focos, semiejes, directriz, asíntotas / límites
+  laterales, existencia del límite, f(a), continuidad, tipo de discontinuidad, justificación escrita) que el
+  estudiante completa manualmente.
 - Un botón **"Comprobar Respuestas"** que evalúa lo escrito por el estudiante contra el resultado real, sin
   completar los campos por sí mismo.
 - Un botón **"Mostrar/Ocultar Respuestas"** pensado solo para practicar de forma autónoma antes de la defensa:
