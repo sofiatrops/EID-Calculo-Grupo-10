@@ -26,9 +26,20 @@ def analizar_limites(rut_str: str) -> dict:
     d1, d2, d3, d4, d5, d8 = digitos[0], digitos[1], digitos[2], digitos[3], digitos[4], digitos[7]
     a = d3
     caso = resultado["caso"]
+    residuo = resultado["d8_mod_3"]
 
     tabla_valores = []
     pasos_justificacion = []
+
+    nombre_caso = {
+        0: "discontinuidad removible",
+        1: "discontinuidad de salto",
+        2: "discontinuidad infinita",
+    }[caso]
+    pasos_justificacion.append(
+        f"Paso 0: Regla de selección del caso. d8 = {d8}, d8 mod 3 = {residuo} "
+        f"-> se genera el caso de {nombre_caso}."
+    )
 
     if caso == 0:
         expresion_simplificada = f"f(x) = x + {d1},  x != {a}"
