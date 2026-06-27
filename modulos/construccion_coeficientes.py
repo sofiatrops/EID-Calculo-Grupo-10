@@ -131,6 +131,7 @@ def construir_coeficientes(digitos: list[int], dv: str) -> dict:
         "ajustes_aplicados": ajustes,
         "tipo_conica": tipo,
         "ecuacion": ecuacion + " = 0",
+        "ecuacion_latex": formatear_ecuacion_latex(A_frac, B_frac, C_val, D_val, E_val),
         "pasos": pasos,
         "digitos": digitos,
         "dv": dv,
@@ -187,6 +188,63 @@ def _formatear_ecuacion(A_frac: str, B_frac: str, C: int, D: int, E: int) -> str
         else:
             resultado += f" + {t}"
     return resultado
+
+
+def _fraccion_a_latex(frac_str: str) -> str:
+    """Convierte '2/11', '-(2/11)' o '-1' a sintaxis LaTeX (\\frac{...}{...})."""
+    texto = frac_str.strip()
+    negativo = False
+    if texto.startswith("-(") and texto.endswith(")"):
+        negativo = True
+        texto = texto[2:-1]
+    elif texto.startswith("-"):
+        negativo = True
+        texto = texto[1:]
+
+    if "/" in texto:
+        num, den = texto.split("/")
+        cuerpo = rf"\frac{{{num}}}{{{den}}}"
+    else:
+        cuerpo = texto
+
+    return f"-{cuerpo}" if negativo else cuerpo
+
+
+def formatear_ecuacion_latex(A_frac: str, B_frac: str, C: int, D: int, E: int) -> str:
+    """Misma ecuación que _formatear_ecuacion, en sintaxis LaTeX (mathtext) para mostrarla con tipografía de fórmula."""
+    terminos = []
+
+    def agregar_termino(coef_str: str, variable: str):
+        try:
+            val = float(eval(coef_str))
+        except Exception:
+            val = 0.0
+        if val == 0:
+            return
+        if val == 1:
+            terminos.append(variable)
+        elif val == -1:
+            terminos.append(f"-{variable}")
+        else:
+            terminos.append(f"{_fraccion_a_latex(coef_str)}{variable}")
+
+    agregar_termino(A_frac, "x^2")
+    agregar_termino(B_frac, "y^2")
+
+    if C != 0:
+        terminos.append("x" if C == 1 else ("-x" if C == -1 else f"{C}x"))
+    if D != 0:
+        terminos.append("y" if D == 1 else ("-y" if D == -1 else f"{D}y"))
+    if E != 0:
+        terminos.append(str(E))
+
+    if not terminos:
+        return "$0 = 0$"
+
+    resultado = terminos[0]
+    for t in terminos[1:]:
+        resultado += f" {t}" if t.startswith("-") else f" + {t}"
+    return f"${resultado} = 0$"
 
 
 def formatear_construccion(resultado: dict) -> str:

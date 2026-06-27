@@ -15,6 +15,7 @@ from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from modulos.analisis_limites import analizar_limites
 from modulos.grafica_funciones_tramos import _generar_puntos, _evaluar_funcion
+from interfaz.widget_ecuacion import EcuacionLatex
 
 
 class VistaLimites(ctk.CTkFrame):
@@ -60,18 +61,8 @@ class VistaLimites(ctk.CTkFrame):
             font=ctk.CTkFont(size=16, weight="bold"),
         ).grid(row=0, column=0, columnspan=2, padx=10, pady=(10, 5), sticky="w")
 
-        ctk.CTkLabel(
-            self.func_frame, text="f(x) =", font=ctk.CTkFont(size=14)
-        ).grid(row=1, column=0, padx=(10, 5), pady=(0, 10), sticky="ne")
-
-        self.func_expresion = ctk.CTkLabel(
-            self.func_frame,
-            text="",
-            font=ctk.CTkFont(size=14),
-            justify="left",
-            wraplength=700,
-        )
-        self.func_expresion.grid(row=1, column=1, padx=(0, 10), pady=(0, 10), sticky="w")
+        self.widget_func_expresion = EcuacionLatex(self.func_frame, altura_pulgadas=0.9)
+        self.widget_func_expresion.grid(row=1, column=0, columnspan=2, padx=10, pady=(0, 10), sticky="ew")
 
         # --- Section 2: Tabla de valores ---
         self.tabla_frame = ctk.CTkFrame(self.main_frame)
@@ -245,7 +236,7 @@ class VistaLimites(ctk.CTkFrame):
         self.resultado = None
         self.mostrar_respuestas = False
         self.boton_mostrar_respuestas.configure(text="Mostrar Respuestas")
-        self.func_expresion.configure(text="")
+        self.widget_func_expresion.mostrar("")
         for fila in self.tabla_labels:
             for lbl in fila:
                 lbl.configure(text="—")
@@ -257,10 +248,10 @@ class VistaLimites(ctk.CTkFrame):
 
     def _actualizar_funcion(self):
         r = self.resultado
-        texto = r["expresion"]
-        if "expresion_simplificada" in r:
-            texto += f"\nSimplificada: {r['expresion_simplificada']}"
-        self.func_expresion.configure(text=texto)
+        lineas = [r["expresion_latex"]]
+        if "expresion_simplificada_latex" in r:
+            lineas.append(r["expresion_simplificada_latex"])
+        self.widget_func_expresion.mostrar("\n".join(lineas))
 
     def _actualizar_tabla(self):
         tabla = self.resultado["tabla_valores"]

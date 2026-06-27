@@ -14,6 +14,23 @@ def raiz_cuadrada(x: float, iteraciones: int = 25) -> float:
     return estimado
 
 
+def _num_latex(valor: float, decimales: int = 4) -> str:
+    """Redondea un numero solo para mostrarlo dentro de una formula LaTeX (no altera el valor real)."""
+    redondeado = round(float(valor), decimales)
+    if redondeado == 0:
+        redondeado = 0.0  # evita mostrar "-0"
+    if redondeado == int(redondeado):
+        return str(int(redondeado))
+    return f"{redondeado:.{decimales}f}".rstrip("0").rstrip(".")
+
+
+def _resta_latex(variable: str, valor: float) -> str:
+    """'(x - 5)' o, si valor es negativo, '(x + 5)' -- evita el doble signo '- -5'."""
+    if valor < 0:
+        return f"({variable} + {_num_latex(-valor)})"
+    return f"({variable} - {_num_latex(valor)})"
+
+
 def _completar_cuadrado_variable(coef: float, lineal: float, nombre_var: str):
     """
     Completa el cuadrado de la expresión: coef*var² + lineal*var
@@ -79,6 +96,9 @@ def _finalizar_circunferencia(A: float, h: float, k: float, F: float, pasos: lis
         "centro": (h, k),
         "radio": r,
         "ecuacion_canonica": f"(x - {h})² + (y - {k})² = {r}²",
+        "ecuacion_canonica_latex": (
+            f"${_resta_latex('x', h)}^2 + {_resta_latex('y', k)}^2 = {_num_latex(r)}^2$"
+        ),
         "pasos": pasos,
     }
 
@@ -138,6 +158,13 @@ def _finalizar_elipse(h: float, k: float, denom_x: float, denom_y: float, pasos:
         "focos": focos,
         "ecuacion_canonica": f"(x - {h})²/{a2} + (y - {k})²/{b2} = 1" if eje_mayor == "x"
                               else f"(x - {h})²/{b2} + (y - {k})²/{a2} = 1",
+        "ecuacion_canonica_latex": (
+            rf"$\frac{{{_resta_latex('x', h)}^2}}{{{_num_latex(a2)}}} + "
+            rf"\frac{{{_resta_latex('y', k)}^2}}{{{_num_latex(b2)}}} = 1$"
+            if eje_mayor == "x" else
+            rf"$\frac{{{_resta_latex('x', h)}^2}}{{{_num_latex(b2)}}} + "
+            rf"\frac{{{_resta_latex('y', k)}^2}}{{{_num_latex(a2)}}} = 1$"
+        ),
         "pasos": pasos,
     }
 
@@ -159,10 +186,18 @@ def _finalizar_hiperbola(h: float, k: float, denom_x: float, denom_y: float, pas
         vertices = [(h - a, k), (h + a, k)]
         focos = [(h - c, k), (h + c, k)]
         ecuacion_canonica = f"(x - {h})²/{a2} - (y - {k})²/{b2} = 1"
+        ecuacion_canonica_latex = (
+            rf"$\frac{{{_resta_latex('x', h)}^2}}{{{_num_latex(a2)}}} - "
+            rf"\frac{{{_resta_latex('y', k)}^2}}{{{_num_latex(b2)}}} = 1$"
+        )
     else:
         vertices = [(h, k - a), (h, k + a)]
         focos = [(h, k - c), (h, k + c)]
         ecuacion_canonica = f"(y - {k})²/{a2} - (x - {h})²/{b2} = 1"
+        ecuacion_canonica_latex = (
+            rf"$\frac{{{_resta_latex('y', k)}^2}}{{{_num_latex(a2)}}} - "
+            rf"\frac{{{_resta_latex('x', h)}^2}}{{{_num_latex(b2)}}} = 1$"
+        )
 
     return {
         "tipo": "Hipérbola",
@@ -174,6 +209,7 @@ def _finalizar_hiperbola(h: float, k: float, denom_x: float, denom_y: float, pas
         "vertices": vertices,
         "focos": focos,
         "ecuacion_canonica": ecuacion_canonica,
+        "ecuacion_canonica_latex": ecuacion_canonica_latex,
         "pasos": pasos,
     }
 
@@ -218,6 +254,9 @@ def _parabola_vertical(A: float, C: float, D: float, E: float, pasos: list):
         "directriz_eje": "horizontal",
         "p": p,
         "ecuacion_canonica": f"(x - {h})² = {4 * p}(y - {k})",
+        "ecuacion_canonica_latex": (
+            f"${_resta_latex('x', h)}^2 = {_num_latex(4 * p)}{_resta_latex('y', k)}$"
+        ),
         "pasos": pasos,
     }
 
@@ -253,6 +292,9 @@ def _parabola_horizontal(B: float, C: float, D: float, E: float, pasos: list):
         "directriz_eje": "vertical",
         "p": p,
         "ecuacion_canonica": f"(y - {k})² = {4 * p}(x - {h})",
+        "ecuacion_canonica_latex": (
+            f"${_resta_latex('y', k)}^2 = {_num_latex(4 * p)}{_resta_latex('x', h)}$"
+        ),
         "pasos": pasos,
     }
 

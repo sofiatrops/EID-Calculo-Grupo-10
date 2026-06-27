@@ -16,10 +16,12 @@ def generar_funcion_tramos(rut_str: str) -> dict:
     tramos = []
     puntos_criticos = []
     expresion = ""
+    expresion_latex = ""
 
     if residuo == 0:
         caso = 0
         expresion = f"f(x) = (x - {a})(x + {d1}) / (x - {a})"
+        expresion_latex = rf"$f(x) = \frac{{(x-{a})(x+{d1})}}{{x-{a}}}$"
         tramos = [
             {"tramo": "x != a", "expresion": f"(x - {a})(x + {d1}) / (x - {a})"},
         ]
@@ -29,6 +31,10 @@ def generar_funcion_tramos(rut_str: str) -> dict:
     elif residuo == 1:
         caso = 1
         expresion = f"f(x) = x + {d2}  si x < {a},  f(x) = x + {d4}  si x >= {a}"
+        expresion_latex = (
+            rf"$f(x) = x + {d2}$   si   $x < {a}$" + "\n"
+            rf"$f(x) = x + {d4}$   si   $x \geq {a}$"
+        )
         tramos = [
             {"tramo": f"x < {a}", "expresion": f"x + {d2}"},
             {"tramo": f"x >= {a}", "expresion": f"x + {d4}"},
@@ -39,6 +45,7 @@ def generar_funcion_tramos(rut_str: str) -> dict:
     else:
         caso = 2
         expresion = f"f(x) = ({d5 + 1}) / (x - {a})"
+        expresion_latex = rf"$f(x) = \frac{{{d5 + 1}}}{{x-{a}}}$"
         tramos = [
             {"tramo": f"x != {a}", "expresion": f"({d5 + 1}) / (x - {a})"},
         ]
@@ -59,6 +66,7 @@ def generar_funcion_tramos(rut_str: str) -> dict:
         "d8_mod_3": residuo,
         "caso": caso,
         "expresion": expresion,
+        "expresion_latex": expresion_latex,
         "tramos": tramos,
         "puntos_criticos": puntos_criticos,
     }
