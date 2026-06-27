@@ -27,6 +27,7 @@ class VistaConicas(customtkinter.CTkFrame):
         self.ultima_canonica = None
         self.ultimos_coeficientes = None
         self.punto_verificado = None
+        self.mostrar_respuestas = False
         self.configurar_layout()
         self.crear_widgets()
         self._mostrar_grafica_vacia()
@@ -42,17 +43,8 @@ class VistaConicas(customtkinter.CTkFrame):
         self.crear_panel_derecho()
 
     def crear_panel_superior(self):
-        self.frame_entrada = customtkinter.CTkFrame(self)
-        self.frame_entrada.grid(row=0, column=0, columnspan=2, padx=10, pady=10, sticky="ew")
-
-        self.etiqueta_titulo = customtkinter.CTkLabel(
-            self.frame_entrada, text="Módulo de Cónicas",
-            font=customtkinter.CTkFont(size=16, weight="bold"),
-        )
-        self.etiqueta_titulo.grid(row=0, column=0, padx=10, pady=10, sticky="w")
-
-        self.etiqueta_error = customtkinter.CTkLabel(self.frame_entrada, text="", text_color="red")
-        self.etiqueta_error.grid(row=1, column=0, padx=10, pady=5, sticky="w")
+        self.etiqueta_error = customtkinter.CTkLabel(self, text="", text_color="red")
+        self.etiqueta_error.grid(row=0, column=0, columnspan=2, padx=15, pady=(5, 0), sticky="w")
 
     def crear_panel_izquierdo(self):
         self.frame_izquierdo = customtkinter.CTkFrame(self)
@@ -164,10 +156,31 @@ class VistaConicas(customtkinter.CTkFrame):
         self.feedback_semiejes = customtkinter.CTkLabel(self.frame_defensa, text="", width=70)
         self.feedback_semiejes.grid(row=4, column=2, padx=5, pady=5)
 
+        self.etiqueta_directriz = customtkinter.CTkLabel(self.frame_defensa, text="Directriz:")
+        self.etiqueta_directriz.grid(row=5, column=0, padx=10, pady=5, sticky="e")
+        self.entrada_directriz = customtkinter.CTkEntry(self.frame_defensa)
+        self.entrada_directriz.grid(row=5, column=1, padx=10, pady=5, sticky="ew")
+        self.entrada_directriz.bind("<KeyRelease>", lambda e: self._filtrar_entrada(self.entrada_directriz, self.CARACTERES_NUMERICOS))
+        self.feedback_directriz = customtkinter.CTkLabel(self.frame_defensa, text="", width=70)
+        self.feedback_directriz.grid(row=5, column=2, padx=5, pady=5)
+
         self.boton_comprobar = customtkinter.CTkButton(
             self.frame_defensa, text="Comprobar Respuestas", command=self.comprobar_respuestas
         )
-        self.boton_comprobar.grid(row=5, column=0, columnspan=3, padx=10, pady=(10, 5))
+        self.boton_comprobar.grid(row=6, column=0, columnspan=2, padx=10, pady=(10, 5))
+
+        self.boton_mostrar_respuestas = customtkinter.CTkButton(
+            self.frame_defensa, text="Mostrar Respuestas", command=self.alternar_respuestas,
+            fg_color="gray40", hover_color="gray30",
+        )
+        self.boton_mostrar_respuestas.grid(row=6, column=2, padx=10, pady=(10, 5))
+
+        self.etiqueta_advertencia_respuestas = customtkinter.CTkLabel(
+            self.frame_defensa,
+            text="⚠ Solo para practicar — no usar durante la defensa oral",
+            font=customtkinter.CTkFont(size=10), text_color="gray60",
+        )
+        self.etiqueta_advertencia_respuestas.grid(row=7, column=0, columnspan=3, padx=10, pady=(0, 10))
 
         self.frame_defensa.grid_columnconfigure(1, weight=1)
 
@@ -204,6 +217,8 @@ class VistaConicas(customtkinter.CTkFrame):
         self.punto_verificado = None
         self.entrada_punto.delete(0, "end")
         self.feedback_punto.configure(text="")
+        self.mostrar_respuestas = False
+        self.boton_mostrar_respuestas.configure(text="Mostrar Respuestas")
 
         self._mostrar_procedimiento(procedimiento)
         self._graficar_canonica(canonica)
@@ -248,6 +263,9 @@ class VistaConicas(customtkinter.CTkFrame):
                 ha="center", va="center", transform=self.eje.transAxes,
             )
 
+        if self.mostrar_respuestas:
+            self._dibujar_respuestas_grafico(canonica)
+
         if self.punto_verificado is not None:
             x, y, pertenece = self.punto_verificado
             color_punto = "lime" if pertenece else "red"
@@ -260,6 +278,38 @@ class VistaConicas(customtkinter.CTkFrame):
         self.graficador.configurar_grafico(self.eje)
         self.figura.tight_layout()
         self.canvas_grafica.draw()
+
+    def _dibujar_respuestas_grafico(self, canonica):
+        centro = canonica.get("centro")
+        if centro:
+            self.eje.scatter([centro[0]], [centro[1]], color="red", zorder=5, label="Centro")
+
+        for clave, color in (("vertice", "orange"), ("foco", "purple")):
+            punto = canonica.get(clave)
+            if punto:
+                self.eje.scatter(
+                    [punto[0]], [punto[1]], color=color, marker="s", zorder=5,
+                    label=clave.capitalize(),
+                )
+
+        for clave, color, etiqueta in (
+            ("vertices", "orange", "Vértices"),
+            ("focos", "purple", "Focos"),
+            ("co_vertices", "brown", "Co-vértices"),
+        ):
+            puntos = canonica.get(clave)
+            if puntos:
+                self.eje.scatter(
+                    [p[0] for p in puntos], [p[1] for p in puntos],
+                    color=color, marker="s", zorder=5, label=etiqueta,
+                )
+
+        directriz_valor = canonica.get("directriz_valor")
+        if directriz_valor is not None:
+            if canonica.get("directriz_eje") == "horizontal":
+                self.eje.axhline(y=directriz_valor, color="brown", linestyle="--", label="Directriz")
+            else:
+                self.eje.axvline(x=directriz_valor, color="brown", linestyle="--", label="Directriz")
 
     def _identificar_punto_especial(self, x, y, canonica, tolerancia=0.3):
         def cerca(punto):
@@ -343,6 +393,7 @@ class VistaConicas(customtkinter.CTkFrame):
                 "vertices": None,
                 "focos": None,
                 "semiejes": [canonica["radio"]],
+                "directriz": None,
             }
         if tipo == "Elipse":
             h, k = canonica["centro"]
@@ -351,6 +402,7 @@ class VistaConicas(customtkinter.CTkFrame):
                 "vertices": [coord for punto in canonica["vertices"] for coord in punto],
                 "focos": [coord for punto in canonica["focos"] for coord in punto],
                 "semiejes": [canonica["semieje_mayor"], canonica["semieje_menor"]],
+                "directriz": None,
             }
         if tipo == "Hipérbola":
             h, k = canonica["centro"]
@@ -359,6 +411,7 @@ class VistaConicas(customtkinter.CTkFrame):
                 "vertices": [coord for punto in canonica["vertices"] for coord in punto],
                 "focos": [coord for punto in canonica["focos"] for coord in punto],
                 "semiejes": [canonica["semieje_transverso"], canonica["semieje_conjugado"]],
+                "directriz": None,
             }
         if tipo.startswith("Parábola") and "degenerada" not in tipo:
             vh, vk = canonica["vertice"]
@@ -368,8 +421,9 @@ class VistaConicas(customtkinter.CTkFrame):
                 "vertices": [vh, vk],
                 "focos": [fh, fk],
                 "semiejes": None,
+                "directriz": [canonica["directriz_valor"]],
             }
-        return {"centro": None, "vertices": None, "focos": None, "semiejes": None}
+        return {"centro": None, "vertices": None, "focos": None, "semiejes": None, "directriz": None}
 
     def _extraer_numeros(self, texto):
         return [float(n) for n in re.findall(r"-?\d+\.?\d*", texto)]
@@ -388,7 +442,7 @@ class VistaConicas(customtkinter.CTkFrame):
     def _limpiar_feedback_defensa(self):
         for feedback in (
             self.feedback_centro, self.feedback_vertices,
-            self.feedback_focos, self.feedback_semiejes,
+            self.feedback_focos, self.feedback_semiejes, self.feedback_directriz,
         ):
             feedback.configure(text="")
 
@@ -404,6 +458,7 @@ class VistaConicas(customtkinter.CTkFrame):
             "vertices": (self.entrada_vertices, self.feedback_vertices),
             "focos": (self.entrada_focos, self.feedback_focos),
             "semiejes": (self.entrada_semiejes, self.feedback_semiejes),
+            "directriz": (self.entrada_directriz, self.feedback_directriz),
         }
 
         for clave, (entrada, feedback) in campos.items():
@@ -423,6 +478,45 @@ class VistaConicas(customtkinter.CTkFrame):
                 feedback.configure(text="✓ Correcto", text_color="green")
             else:
                 feedback.configure(text="✗ Revisar", text_color="red")
+
+    def alternar_respuestas(self):
+        if self.ultima_canonica is None:
+            self.mostrar_error("Primero valida un RUT para poder mostrar las respuestas.")
+            return
+        self.limpiar_error()
+
+        self.mostrar_respuestas = not self.mostrar_respuestas
+        self.boton_mostrar_respuestas.configure(
+            text="Ocultar Respuestas" if self.mostrar_respuestas else "Mostrar Respuestas"
+        )
+        self._actualizar_feedback_respuestas()
+        self._graficar_canonica(self.ultima_canonica)
+
+    def _formatear_valor_esperado(self, clave, valores):
+        if clave in ("semiejes", "directriz"):
+            return ", ".join(f"{round(v, 4)}" for v in valores)
+        puntos = [valores[i:i + 2] for i in range(0, len(valores), 2)]
+        return ", ".join(f"({round(p[0], 4)}, {round(p[1], 4)})" for p in puntos)
+
+    def _actualizar_feedback_respuestas(self):
+        if not self.mostrar_respuestas:
+            self._limpiar_feedback_defensa()
+            return
+
+        esperados = self._valores_esperados(self.ultima_canonica)
+        feedbacks = {
+            "centro": self.feedback_centro, "vertices": self.feedback_vertices,
+            "focos": self.feedback_focos, "semiejes": self.feedback_semiejes,
+            "directriz": self.feedback_directriz,
+        }
+        for clave, feedback in feedbacks.items():
+            valor = esperados[clave]
+            if valor is None:
+                feedback.configure(text="N/A", text_color="gray")
+            else:
+                feedback.configure(
+                    text=f"→ {self._formatear_valor_esperado(clave, valor)}", text_color="#1e6fd9"
+                )
 
     def mostrar_error(self, mensaje):
         self.etiqueta_error.configure(text=mensaje)
@@ -450,10 +544,13 @@ class VistaConicas(customtkinter.CTkFrame):
         self.entrada_vertices.delete(0, "end")
         self.entrada_focos.delete(0, "end")
         self.entrada_semiejes.delete(0, "end")
+        self.entrada_directriz.delete(0, "end")
         self._limpiar_feedback_defensa()
         self.ultima_canonica = None
         self.ultimos_coeficientes = None
         self.punto_verificado = None
+        self.mostrar_respuestas = False
+        self.boton_mostrar_respuestas.configure(text="Mostrar Respuestas")
         self.entrada_punto.delete(0, "end")
         self.feedback_punto.configure(text="")
 
