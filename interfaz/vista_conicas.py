@@ -175,23 +175,31 @@ class VistaConicas(customtkinter.CTkFrame):
         self.feedback_directriz = customtkinter.CTkLabel(self.frame_defensa, text="", width=70)
         self.feedback_directriz.grid(row=5, column=2, padx=5, pady=5)
 
+        self.etiqueta_asintotas = customtkinter.CTkLabel(self.frame_defensa, text="Asíntotas:")
+        self.etiqueta_asintotas.grid(row=6, column=0, padx=10, pady=5, sticky="e")
+        self.entrada_asintotas = customtkinter.CTkEntry(self.frame_defensa, placeholder_text="Ej: 1, -8, -1, -4")
+        self.entrada_asintotas.grid(row=6, column=1, padx=10, pady=5, sticky="ew")
+        self.entrada_asintotas.bind("<KeyRelease>", lambda e: self._filtrar_entrada(self.entrada_asintotas, self.CARACTERES_NUMERICOS))
+        self.feedback_asintotas = customtkinter.CTkLabel(self.frame_defensa, text="", width=70)
+        self.feedback_asintotas.grid(row=6, column=2, padx=5, pady=5)
+
         self.boton_comprobar = customtkinter.CTkButton(
             self.frame_defensa, text="Comprobar Respuestas", command=self.comprobar_respuestas
         )
-        self.boton_comprobar.grid(row=6, column=0, columnspan=2, padx=10, pady=(10, 5))
+        self.boton_comprobar.grid(row=7, column=0, columnspan=2, padx=10, pady=(10, 5))
 
         self.boton_mostrar_respuestas = customtkinter.CTkButton(
             self.frame_defensa, text="Mostrar Respuestas", command=self.alternar_respuestas,
             fg_color="gray40", hover_color="gray30",
         )
-        self.boton_mostrar_respuestas.grid(row=6, column=2, padx=10, pady=(10, 5))
+        self.boton_mostrar_respuestas.grid(row=7, column=2, padx=10, pady=(10, 5))
 
         self.etiqueta_advertencia_respuestas = customtkinter.CTkLabel(
             self.frame_defensa,
             text="⚠ Solo para practicar — no usar durante la defensa oral",
             font=customtkinter.CTkFont(size=10), text_color="gray60",
         )
-        self.etiqueta_advertencia_respuestas.grid(row=7, column=0, columnspan=3, padx=10, pady=(0, 10))
+        self.etiqueta_advertencia_respuestas.grid(row=8, column=0, columnspan=3, padx=10, pady=(0, 10))
 
         self.frame_defensa.grid_columnconfigure(1, weight=1)
 
@@ -317,6 +325,19 @@ class VistaConicas(customtkinter.CTkFrame):
             else:
                 self.eje.axvline(x=directriz_valor, color="brown", linestyle="--", label="Directriz")
 
+        asintotas_valores = canonica.get("asintotas_valores")
+        if asintotas_valores:
+            m1, b1, m2, b2 = asintotas_valores
+            x_min, x_max = self.eje.get_xlim()
+            self.eje.plot(
+                [x_min, x_max], [m1 * x_min + b1, m1 * x_max + b1],
+                color="teal", linestyle="--", linewidth=1, label="Asíntotas",
+            )
+            self.eje.plot(
+                [x_min, x_max], [m2 * x_min + b2, m2 * x_max + b2],
+                color="teal", linestyle="--", linewidth=1,
+            )
+
     def _identificar_punto_especial(self, x, y, canonica, tolerancia=0.3):
         def cerca(punto):
             return punto is not None and abs(punto[0] - x) <= tolerancia and abs(punto[1] - y) <= tolerancia
@@ -400,6 +421,7 @@ class VistaConicas(customtkinter.CTkFrame):
                 "focos": None,
                 "semiejes": [canonica["radio"]],
                 "directriz": None,
+                "asintotas": None,
             }
         if tipo == "Elipse":
             h, k = canonica["centro"]
@@ -409,6 +431,7 @@ class VistaConicas(customtkinter.CTkFrame):
                 "focos": [coord for punto in canonica["focos"] for coord in punto],
                 "semiejes": [canonica["semieje_mayor"], canonica["semieje_menor"]],
                 "directriz": None,
+                "asintotas": None,
             }
         if tipo == "Hipérbola":
             h, k = canonica["centro"]
@@ -418,6 +441,7 @@ class VistaConicas(customtkinter.CTkFrame):
                 "focos": [coord for punto in canonica["focos"] for coord in punto],
                 "semiejes": [canonica["semieje_transverso"], canonica["semieje_conjugado"]],
                 "directriz": None,
+                "asintotas": canonica["asintotas_valores"],
             }
         if tipo.startswith("Parábola") and "degenerada" not in tipo:
             vh, vk = canonica["vertice"]
@@ -428,8 +452,12 @@ class VistaConicas(customtkinter.CTkFrame):
                 "focos": [fh, fk],
                 "semiejes": None,
                 "directriz": [canonica["directriz_valor"]],
+                "asintotas": None,
             }
-        return {"centro": None, "vertices": None, "focos": None, "semiejes": None, "directriz": None}
+        return {
+            "centro": None, "vertices": None, "focos": None, "semiejes": None,
+            "directriz": None, "asintotas": None,
+        }
 
     def _extraer_numeros(self, texto):
         return [float(n) for n in re.findall(r"-?\d+\.?\d*", texto)]
@@ -447,8 +475,8 @@ class VistaConicas(customtkinter.CTkFrame):
 
     def _limpiar_feedback_defensa(self):
         for feedback in (
-            self.feedback_centro, self.feedback_vertices,
-            self.feedback_focos, self.feedback_semiejes, self.feedback_directriz,
+            self.feedback_centro, self.feedback_vertices, self.feedback_focos,
+            self.feedback_semiejes, self.feedback_directriz, self.feedback_asintotas,
         ):
             feedback.configure(text="")
 
@@ -465,6 +493,7 @@ class VistaConicas(customtkinter.CTkFrame):
             "focos": (self.entrada_focos, self.feedback_focos),
             "semiejes": (self.entrada_semiejes, self.feedback_semiejes),
             "directriz": (self.entrada_directriz, self.feedback_directriz),
+            "asintotas": (self.entrada_asintotas, self.feedback_asintotas),
         }
 
         for clave, (entrada, feedback) in campos.items():
@@ -499,6 +528,8 @@ class VistaConicas(customtkinter.CTkFrame):
         self._graficar_canonica(self.ultima_canonica)
 
     def _formatear_valor_esperado(self, clave, valores):
+        if clave == "asintotas":
+            return ", ".join(self.ultima_canonica["asintotas"])
         if clave in ("semiejes", "directriz"):
             return ", ".join(f"{round(v, 4)}" for v in valores)
         puntos = [valores[i:i + 2] for i in range(0, len(valores), 2)]
@@ -513,7 +544,7 @@ class VistaConicas(customtkinter.CTkFrame):
         feedbacks = {
             "centro": self.feedback_centro, "vertices": self.feedback_vertices,
             "focos": self.feedback_focos, "semiejes": self.feedback_semiejes,
-            "directriz": self.feedback_directriz,
+            "directriz": self.feedback_directriz, "asintotas": self.feedback_asintotas,
         }
         for clave, feedback in feedbacks.items():
             valor = esperados[clave]
@@ -551,6 +582,7 @@ class VistaConicas(customtkinter.CTkFrame):
         self.entrada_focos.delete(0, "end")
         self.entrada_semiejes.delete(0, "end")
         self.entrada_directriz.delete(0, "end")
+        self.entrada_asintotas.delete(0, "end")
         self._limpiar_feedback_defensa()
         self.ultima_canonica = None
         self.ultimos_coeficientes = None
