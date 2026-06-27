@@ -73,12 +73,14 @@ class VistaConicas(customtkinter.CTkFrame):
         )
         self.etiqueta_procedimiento.grid(row=4, column=0, padx=10, pady=(10, 0), sticky="w")
 
-        self.texto_procedimiento = customtkinter.CTkTextbox(
-            self.frame_izquierdo, wrap="word",
-            font=customtkinter.CTkFont(family="Courier", size=12),
+        self.frame_procedimiento_scroll = customtkinter.CTkScrollableFrame(self.frame_izquierdo)
+        self.frame_procedimiento_scroll.grid(row=5, column=0, padx=10, pady=(5, 10), sticky="nsew")
+        self.frame_procedimiento_scroll.grid_columnconfigure(0, weight=1)
+
+        self.widget_procedimiento = EcuacionLatex(
+            self.frame_procedimiento_scroll, altura_pulgadas=2.0, ancho_pulgadas=6.8,
         )
-        self.texto_procedimiento.grid(row=5, column=0, padx=10, pady=(5, 10), sticky="nsew")
-        self.texto_procedimiento.configure(state="disabled")
+        self.widget_procedimiento.grid(row=0, column=0, padx=0, pady=0, sticky="ew")
 
     def crear_panel_derecho(self):
         self.frame_derecho = customtkinter.CTkFrame(self)
@@ -232,10 +234,7 @@ class VistaConicas(customtkinter.CTkFrame):
         self._limpiar_feedback_defensa()
 
     def _mostrar_procedimiento(self, texto):
-        self.texto_procedimiento.configure(state="normal")
-        self.texto_procedimiento.delete("1.0", "end")
-        self.texto_procedimiento.insert("1.0", texto)
-        self.texto_procedimiento.configure(state="disabled")
+        self.widget_procedimiento.mostrar_parrafos(texto.split("\n"), ancho_linea=80)
 
     def _graficar_canonica(self, canonica):
         self.eje.clear()
