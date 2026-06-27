@@ -14,6 +14,30 @@ def raiz_cuadrada(x: float, iteraciones: int = 25) -> float:
     return estimado
 
 
+def _num_latex(valor: float, decimales: int = 4) -> str:
+    """Redondea un numero solo para mostrarlo dentro de una formula LaTeX (no altera el valor real)."""
+    redondeado = round(float(valor), decimales)
+    if redondeado == 0:
+        redondeado = 0.0  # evita mostrar "-0"
+    if redondeado == int(redondeado):
+        return str(int(redondeado))
+    return f"{redondeado:.{decimales}f}".rstrip("0").rstrip(".")
+
+
+def _resta_latex(variable: str, valor: float) -> str:
+    """'(x - 5)' o, si valor es negativo, '(x + 5)' -- evita el doble signo '- -5'."""
+    if valor < 0:
+        return f"({variable} + {_num_latex(-valor)})"
+    return f"({variable} - {_num_latex(valor)})"
+
+
+def _termino_latex(valor: float, sufijo: str = "") -> str:
+    """' + 3x' o ' - 3x' (con el signo correcto) para encadenar terminos sin doble signo."""
+    if valor < 0:
+        return f" - {_num_latex(-valor)}{sufijo}"
+    return f" + {_num_latex(valor)}{sufijo}"
+
+
 def _completar_cuadrado_variable(coef: float, lineal: float, nombre_var: str):
     """
     Completa el cuadrado de la expresión: coef*var² + lineal*var
@@ -23,9 +47,9 @@ def _completar_cuadrado_variable(coef: float, lineal: float, nombre_var: str):
     h = -lineal / (2 * coef)
     correccion = coef * h * h
     pasos = [
-        f"{coef}{nombre_var}² + ({lineal}){nombre_var} = {coef}({nombre_var}² + ({lineal}/{coef}){nombre_var})",
-        f"= {coef}({nombre_var} - ({h}))² - {coef}·({h})²",
-        f"= {coef}({nombre_var} - {h})² - {correccion}",
+        f"${_num_latex(coef)}{nombre_var}^2 + ({_num_latex(lineal)}){nombre_var} = "
+        rf"{_num_latex(coef)}\left({nombre_var}^2 + \frac{{{_num_latex(lineal)}}}{{{_num_latex(coef)}}}{nombre_var}\right)$",
+        f"$= {_num_latex(coef)}{_resta_latex(nombre_var, h)}^2{_termino_latex(-correccion)}$",
     ]
     return h, correccion, pasos
 
@@ -37,24 +61,29 @@ def _transformar_centro(A: float, B: float, C: float, D: float, E: float):
     Retorna (h, k, F, pasos) tales que A(x-h)² + B(y-k)² = F.
     """
     pasos = [
-        f"Ecuación general: {A}x² + {B}y² + ({C})x + ({D})y + {E} = 0",
-        "Paso 1: Agrupar los términos en x y en y por separado.",
-        f"  ({A}x² + ({C})x) + ({B}y² + ({D})y) + {E} = 0",
+        f"Ecuación general: ${_num_latex(A)}x^2{_termino_latex(B, 'y^2')} + ({_num_latex(C)})x + "
+        f"({_num_latex(D)})y{_termino_latex(E)} = 0$",
+        "Paso 1: Agrupar los términos en x y en y por separado:",
+        f"$({_num_latex(A)}x^2 + ({_num_latex(C)})x) + ({_num_latex(B)}y^2 + ({_num_latex(D)})y){_termino_latex(E)} = 0$",
     ]
 
     h, corr_x, pasos_x = _completar_cuadrado_variable(A, C, "x")
     k, corr_y, pasos_y = _completar_cuadrado_variable(B, D, "y")
 
     pasos.append("Paso 2: Completar el cuadrado en x:")
-    pasos.extend(f"  {p}" for p in pasos_x)
+    pasos.extend(pasos_x)
     pasos.append("Paso 3: Completar el cuadrado en y:")
-    pasos.extend(f"  {p}" for p in pasos_y)
+    pasos.extend(pasos_y)
 
     F = corr_x + corr_y - E
     pasos.append(
-        f"Paso 4: Sustituir y agrupar constantes:\n"
-        f"  {A}(x - {h})² + {B}(y - {k})² - {corr_x} - {corr_y} + {E} = 0\n"
-        f"  {A}(x - {h})² + {B}(y - {k})² = {corr_x} + {corr_y} - {E} = {F}"
+        f"Paso 4: Sustituir y agrupar constantes: "
+        f"${_num_latex(A)}{_resta_latex('x', h)}^2{_termino_latex(B, _resta_latex('y', k) + '^2')}"
+        f"{_termino_latex(-corr_x)}{_termino_latex(-corr_y)}{_termino_latex(E)} = 0$"
+    )
+    pasos.append(
+        f"${_num_latex(A)}{_resta_latex('x', h)}^2{_termino_latex(B, _resta_latex('y', k) + '^2')} = "
+        f"{_num_latex(corr_x)}{_termino_latex(corr_y)}{_termino_latex(-E)} = {_num_latex(F)}$"
     )
 
     return h, k, F, pasos
@@ -67,18 +96,27 @@ def _finalizar_circunferencia(A: float, h: float, k: float, F: float, pasos: lis
 
     r2 = F / A
     if r2 < 0:
-        pasos.append(f"F/A = {r2} < 0 → no existen puntos reales que satisfagan la ecuación.")
+        pasos.append(f"$F/A = {_num_latex(r2)} < 0$ → no existen puntos reales que satisfagan la ecuación.")
         return {"tipo": "Sin lugar geométrico real", "centro": (h, k), "pasos": pasos}
 
     r = raiz_cuadrada(r2)
-    pasos.append(f"Paso 5: Dividir por A = {A}: (x - {h})² + (y - {k})² = {r2}")
-    pasos.append(f"Paso 6: r = √{r2} = {r}  (raíz calculada con Newton-Raphson, sin math.sqrt)")
+    pasos.append(
+        f"Paso 5: Dividir por $A = {_num_latex(A)}$: "
+        f"${_resta_latex('x', h)}^2 + {_resta_latex('y', k)}^2 = {_num_latex(r2)}$"
+    )
+    pasos.append(
+        f"Paso 6: $r = \\sqrt{{{_num_latex(r2)}}} = {_num_latex(r)}$ "
+        f"(raíz calculada con Newton-Raphson, sin math.sqrt)"
+    )
 
     return {
         "tipo": "Circunferencia",
         "centro": (h, k),
         "radio": r,
         "ecuacion_canonica": f"(x - {h})² + (y - {k})² = {r}²",
+        "ecuacion_canonica_latex": (
+            f"${_resta_latex('x', h)}^2 + {_resta_latex('y', k)}^2 = {_num_latex(r)}^2$"
+        ),
         "pasos": pasos,
     }
 
@@ -91,8 +129,9 @@ def _finalizar_elipse_o_hiperbola(A: float, B: float, h: float, k: float, F: flo
     denom_x = F / A
     denom_y = F / B
     pasos.append(
-        f"Paso 5: Dividir ambos lados por F = {F}:\n"
-        f"  (x - {h})²/{denom_x} + (y - {k})²/{denom_y} = 1"
+        f"Paso 5: Dividir ambos lados por $F = {_num_latex(F)}$: "
+        rf"$\frac{{{_resta_latex('x', h)}^2}}{{{_num_latex(denom_x)}}} + "
+        rf"\frac{{{_resta_latex('y', k)}^2}}{{{_num_latex(denom_y)}}} = 1$"
     )
 
     if denom_x > 0 and denom_y > 0:
@@ -114,8 +153,12 @@ def _finalizar_elipse(h: float, k: float, denom_x: float, denom_y: float, pasos:
     b = raiz_cuadrada(b2)
     c = raiz_cuadrada(a2 - b2) if a2 != b2 else 0.0
 
-    pasos.append(f"Paso 6: a = √{a2} = {a},  b = √{b2} = {b},  c = √(a² - b²) = √{a2 - b2} = {c}")
-    pasos.append(f"Eje mayor: {eje_mayor}")
+    pasos.append(
+        f"Paso 6: $a = \\sqrt{{{_num_latex(a2)}}} = {_num_latex(a)}$, "
+        f"$b = \\sqrt{{{_num_latex(b2)}}} = {_num_latex(b)}$, "
+        f"$c = \\sqrt{{a^2 - b^2}} = \\sqrt{{{_num_latex(a2 - b2)}}} = {_num_latex(c)}$"
+    )
+    pasos.append(f"Eje mayor: ${eje_mayor}$")
 
     if eje_mayor == "x":
         vertices = [(h - a, k), (h + a, k)]
@@ -138,6 +181,13 @@ def _finalizar_elipse(h: float, k: float, denom_x: float, denom_y: float, pasos:
         "focos": focos,
         "ecuacion_canonica": f"(x - {h})²/{a2} + (y - {k})²/{b2} = 1" if eje_mayor == "x"
                               else f"(x - {h})²/{b2} + (y - {k})²/{a2} = 1",
+        "ecuacion_canonica_latex": (
+            rf"$\frac{{{_resta_latex('x', h)}^2}}{{{_num_latex(a2)}}} + "
+            rf"\frac{{{_resta_latex('y', k)}^2}}{{{_num_latex(b2)}}} = 1$"
+            if eje_mayor == "x" else
+            rf"$\frac{{{_resta_latex('x', h)}^2}}{{{_num_latex(b2)}}} + "
+            rf"\frac{{{_resta_latex('y', k)}^2}}{{{_num_latex(a2)}}} = 1$"
+        ),
         "pasos": pasos,
     }
 
@@ -152,17 +202,29 @@ def _finalizar_hiperbola(h: float, k: float, denom_x: float, denom_y: float, pas
     b = raiz_cuadrada(b2)
     c = raiz_cuadrada(a2 + b2)
 
-    pasos.append(f"Paso 6: a = √{a2} = {a},  b = √{b2} = {b},  c = √(a² + b²) = √{a2 + b2} = {c}")
-    pasos.append(f"Eje transverso: {eje_transverso}")
+    pasos.append(
+        f"Paso 6: $a = \\sqrt{{{_num_latex(a2)}}} = {_num_latex(a)}$, "
+        f"$b = \\sqrt{{{_num_latex(b2)}}} = {_num_latex(b)}$, "
+        f"$c = \\sqrt{{a^2 + b^2}} = \\sqrt{{{_num_latex(a2 + b2)}}} = {_num_latex(c)}$"
+    )
+    pasos.append(f"Eje transverso: ${eje_transverso}$")
 
     if eje_transverso == "x":
         vertices = [(h - a, k), (h + a, k)]
         focos = [(h - c, k), (h + c, k)]
         ecuacion_canonica = f"(x - {h})²/{a2} - (y - {k})²/{b2} = 1"
+        ecuacion_canonica_latex = (
+            rf"$\frac{{{_resta_latex('x', h)}^2}}{{{_num_latex(a2)}}} - "
+            rf"\frac{{{_resta_latex('y', k)}^2}}{{{_num_latex(b2)}}} = 1$"
+        )
     else:
         vertices = [(h, k - a), (h, k + a)]
         focos = [(h, k - c), (h, k + c)]
         ecuacion_canonica = f"(y - {k})²/{a2} - (x - {h})²/{b2} = 1"
+        ecuacion_canonica_latex = (
+            rf"$\frac{{{_resta_latex('y', k)}^2}}{{{_num_latex(a2)}}} - "
+            rf"\frac{{{_resta_latex('x', h)}^2}}{{{_num_latex(b2)}}} = 1$"
+        )
 
     return {
         "tipo": "Hipérbola",
@@ -174,12 +236,16 @@ def _finalizar_hiperbola(h: float, k: float, denom_x: float, denom_y: float, pas
         "vertices": vertices,
         "focos": focos,
         "ecuacion_canonica": ecuacion_canonica,
+        "ecuacion_canonica_latex": ecuacion_canonica_latex,
         "pasos": pasos,
     }
 
 
 def _transformar_parabola(A: float, B: float, C: float, D: float, E: float):
-    pasos = [f"Ecuación general: {A}x² + {B}y² + ({C})x + ({D})y + {E} = 0"]
+    pasos = [
+        f"Ecuación general: ${_num_latex(A)}x^2{_termino_latex(B, 'y^2')} + ({_num_latex(C)})x + "
+        f"({_num_latex(D)})y{_termino_latex(E)} = 0$"
+    ]
 
     if B == 0:
         return _parabola_vertical(A, C, D, E, pasos)
@@ -190,24 +256,37 @@ def _transformar_parabola(A: float, B: float, C: float, D: float, E: float):
 def _parabola_vertical(A: float, C: float, D: float, E: float, pasos: list):
     pasos.append("B = 0 → parábola de eje vertical. Se completa el cuadrado en x.")
     h, corr_x, pasos_x = _completar_cuadrado_variable(A, C, "x")
-    pasos.extend(f"  {p}" for p in pasos_x)
-    pasos.append(f"Sustituyendo: {A}(x - {h})² - {corr_x} + ({D})y + {E} = 0")
+    pasos.extend(pasos_x)
+    pasos.append(
+        f"Sustituyendo: ${_num_latex(A)}{_resta_latex('x', h)}^2{_termino_latex(-corr_x)} + "
+        f"({_num_latex(D)})y{_termino_latex(E)} = 0$"
+    )
 
     if D == 0:
         pasos.append("D = 0 → no hay término lineal en y; la ecuación no define una parábola estándar (caso degenerado).")
         return {"tipo": "Parábola degenerada", "vertice": (h, None), "pasos": pasos}
 
     k = (corr_x - E) / D
-    pasos.append(f"({D})y = -{A}(x - {h})² + {corr_x} - {E}")
-    pasos.append(f"y - ({k}) = ({-A}/{D})(x - {h})²")
+    pasos.append(
+        f"${_num_latex(D)}y = {_num_latex(-A)}{_resta_latex('x', h)}^2{_termino_latex(corr_x)}{_termino_latex(-E)}$"
+    )
+    pasos.append(
+        f"$y - ({_num_latex(k)}) = \\frac{{{_num_latex(-A)}}}{{{_num_latex(D)}}}{_resta_latex('x', h)}^2$"
+    )
 
     p = -D / (4 * A)
-    pasos.append(f"Forma estándar (x - h)² = 4p(y - k):  4p = {-D}/{A} → p = {p}")
+    pasos.append(
+        f"Forma estándar $(x-h)^2 = 4p(y-k)$: "
+        rf"$4p = \frac{{{_num_latex(-D)}}}{{{_num_latex(A)}}} \to p = {_num_latex(p)}$"
+    )
 
     foco = (h, k + p)
     directriz = k - p
     apertura = "hacia arriba" if p > 0 else "hacia abajo"
-    pasos.append(f"p = {p} ({apertura}). Vértice = ({h}, {k}). Foco = {foco}. Directriz: y = {directriz}")
+    pasos.append(
+        f"$p = {_num_latex(p)}$ ({apertura}). Vértice $= ({_num_latex(h)}, {_num_latex(k)})$. "
+        f"Foco $= ({_num_latex(foco[0])}, {_num_latex(foco[1])})$. Directriz: $y = {_num_latex(directriz)}$"
+    )
 
     return {
         "tipo": "Parábola (eje vertical)",
@@ -218,6 +297,9 @@ def _parabola_vertical(A: float, C: float, D: float, E: float, pasos: list):
         "directriz_eje": "horizontal",
         "p": p,
         "ecuacion_canonica": f"(x - {h})² = {4 * p}(y - {k})",
+        "ecuacion_canonica_latex": (
+            f"${_resta_latex('x', h)}^2 = {_num_latex(4 * p)}{_resta_latex('y', k)}$"
+        ),
         "pasos": pasos,
     }
 
@@ -225,24 +307,37 @@ def _parabola_vertical(A: float, C: float, D: float, E: float, pasos: list):
 def _parabola_horizontal(B: float, C: float, D: float, E: float, pasos: list):
     pasos.append("A = 0 → parábola de eje horizontal. Se completa el cuadrado en y.")
     k, corr_y, pasos_y = _completar_cuadrado_variable(B, D, "y")
-    pasos.extend(f"  {p}" for p in pasos_y)
-    pasos.append(f"Sustituyendo: {B}(y - {k})² - {corr_y} + ({C})x + {E} = 0")
+    pasos.extend(pasos_y)
+    pasos.append(
+        f"Sustituyendo: ${_num_latex(B)}{_resta_latex('y', k)}^2{_termino_latex(-corr_y)} + "
+        f"({_num_latex(C)})x{_termino_latex(E)} = 0$"
+    )
 
     if C == 0:
         pasos.append("C = 0 → no hay término lineal en x; la ecuación no define una parábola estándar (caso degenerado).")
         return {"tipo": "Parábola degenerada", "vertice": (None, k), "pasos": pasos}
 
     h = (corr_y - E) / C
-    pasos.append(f"({C})x = -{B}(y - {k})² + {corr_y} - {E}")
-    pasos.append(f"x - ({h}) = ({-B}/{C})(y - {k})²")
+    pasos.append(
+        f"${_num_latex(C)}x = {_num_latex(-B)}{_resta_latex('y', k)}^2{_termino_latex(corr_y)}{_termino_latex(-E)}$"
+    )
+    pasos.append(
+        f"$x - ({_num_latex(h)}) = \\frac{{{_num_latex(-B)}}}{{{_num_latex(C)}}}{_resta_latex('y', k)}^2$"
+    )
 
     p = -C / (4 * B)
-    pasos.append(f"Forma estándar (y - k)² = 4p(x - h):  4p = {-C}/{B} → p = {p}")
+    pasos.append(
+        f"Forma estándar $(y-k)^2 = 4p(x-h)$: "
+        rf"$4p = \frac{{{_num_latex(-C)}}}{{{_num_latex(B)}}} \to p = {_num_latex(p)}$"
+    )
 
     foco = (h + p, k)
     directriz = h - p
     apertura = "hacia la derecha" if p > 0 else "hacia la izquierda"
-    pasos.append(f"p = {p} ({apertura}). Vértice = ({h}, {k}). Foco = {foco}. Directriz: x = {directriz}")
+    pasos.append(
+        f"$p = {_num_latex(p)}$ ({apertura}). Vértice $= ({_num_latex(h)}, {_num_latex(k)})$. "
+        f"Foco $= ({_num_latex(foco[0])}, {_num_latex(foco[1])})$. Directriz: $x = {_num_latex(directriz)}$"
+    )
 
     return {
         "tipo": "Parábola (eje horizontal)",
@@ -253,6 +348,9 @@ def _parabola_horizontal(B: float, C: float, D: float, E: float, pasos: list):
         "directriz_eje": "vertical",
         "p": p,
         "ecuacion_canonica": f"(y - {k})² = {4 * p}(x - {h})",
+        "ecuacion_canonica_latex": (
+            f"${_resta_latex('y', k)}^2 = {_num_latex(4 * p)}{_resta_latex('x', h)}$"
+        ),
         "pasos": pasos,
     }
 
@@ -268,12 +366,18 @@ def expandir_forma_canonica(resultado: dict) -> list:
     if tipo == "Circunferencia":
         h, k = resultado["centro"]
         r = resultado["radio"]
-        pasos.append(f"Partimos de la forma canónica: (x - {h})² + (y - {k})² = {r}²")
-        pasos.append(f"Expandimos los cuadrados de binomio:")
-        pasos.append(f"  x² - {2*h}x + {h*h} + y² - {2*k}y + {k*k} = {r*r}")
-        pasos.append("Reagrupamos todos los términos al lado izquierdo:")
         pasos.append(
-            f"  x² + y² + ({-2*h})x + ({-2*k})y + ({h*h + k*k - r*r}) = 0"
+            f"Partimos de la forma canónica: ${_resta_latex('x', h)}^2 + {_resta_latex('y', k)}^2 = {_num_latex(r)}^2$"
+        )
+        pasos.append(
+            f"Expandimos los cuadrados de binomio: "
+            f"$x^2{_termino_latex(-2*h, 'x')} + {_num_latex(h*h)} + y^2{_termino_latex(-2*k, 'y')} + "
+            f"{_num_latex(k*k)} = {_num_latex(r*r)}$"
+        )
+        pasos.append(
+            f"Reagrupamos todos los términos al lado izquierdo: "
+            f"$x^2 + y^2 + ({_num_latex(-2*h)})x + ({_num_latex(-2*k)})y + "
+            f"({_num_latex(h*h + k*k - r*r)}) = 0$"
         )
         pasos.append("Esta es la ecuación general equivalente (A = B = 1 tras normalizar).")
 
@@ -281,29 +385,54 @@ def expandir_forma_canonica(resultado: dict) -> list:
         h, k = resultado["centro"]
         signo = "+" if tipo == "Elipse" else "-"
         eje = resultado.get("eje_mayor") or resultado.get("eje_transverso")
+        a2 = resultado.get("semieje_mayor", resultado.get("semieje_transverso")) ** 2
+        b2 = resultado.get("semieje_menor", resultado.get("semieje_conjugado")) ** 2
         if eje == "x":
-            a2 = resultado.get("semieje_mayor", resultado.get("semieje_transverso")) ** 2
-            b2 = resultado.get("semieje_menor", resultado.get("semieje_conjugado")) ** 2
-            pasos.append(f"Partimos de: (x - {h})²/{a2} {signo} (y - {k})²/{b2} = 1")
-            pasos.append(f"Multiplicamos por {a2}·{b2}: {b2}(x - {h})² {signo} {a2}(y - {k})² = {a2*b2}")
+            pasos.append(
+                rf"Partimos de: $\frac{{{_resta_latex('x', h)}^2}}{{{_num_latex(a2)}}} {signo} "
+                rf"\frac{{{_resta_latex('y', k)}^2}}{{{_num_latex(b2)}}} = 1$"
+            )
+            pasos.append(
+                f"Multiplicamos por ${_num_latex(a2)} \\cdot {_num_latex(b2)}$: "
+                f"${_num_latex(b2)}{_resta_latex('x', h)}^2 {signo} {_num_latex(a2)}{_resta_latex('y', k)}^2 = {_num_latex(a2*b2)}$"
+            )
         else:
-            a2 = resultado.get("semieje_mayor", resultado.get("semieje_transverso")) ** 2
-            b2 = resultado.get("semieje_menor", resultado.get("semieje_conjugado")) ** 2
-            pasos.append(f"Partimos de: (y - {k})²/{a2} {signo} (x - {h})²/{b2} = 1")
-            pasos.append(f"Multiplicamos por {a2}·{b2}: {b2}(y - {k})² {signo} {a2}(x - {h})² = {a2*b2}")
-        pasos.append("Se expanden los binomios al cuadrado y se reagrupan los términos para llegar a la forma Ax² + By² + Cx + Dy + E = 0.")
+            pasos.append(
+                rf"Partimos de: $\frac{{{_resta_latex('y', k)}^2}}{{{_num_latex(a2)}}} {signo} "
+                rf"\frac{{{_resta_latex('x', h)}^2}}{{{_num_latex(b2)}}} = 1$"
+            )
+            pasos.append(
+                f"Multiplicamos por ${_num_latex(a2)} \\cdot {_num_latex(b2)}$: "
+                f"${_num_latex(b2)}{_resta_latex('y', k)}^2 {signo} {_num_latex(a2)}{_resta_latex('x', h)}^2 = {_num_latex(a2*b2)}$"
+            )
+        pasos.append(
+            "Se expanden los binomios al cuadrado y se reagrupan los términos para llegar "
+            "a la forma $Ax^2 + By^2 + Cx + Dy + E = 0$."
+        )
 
     elif tipo.startswith("Parábola") and "degenerada" not in tipo:
         h, k = resultado["vertice"]
         p = resultado["p"]
         if "vertical" in tipo:
-            pasos.append(f"Partimos de: (x - {h})² = {4*p}(y - {k})")
-            pasos.append(f"Expandimos: x² - {2*h}x + {h*h} = {4*p}y - {4*p*k}")
-            pasos.append(f"Reagrupamos: x² + ({-2*h})x + ({-4*p})y + ({h*h + 4*p*k}) = 0")
+            pasos.append(f"Partimos de: ${_resta_latex('x', h)}^2 = {_num_latex(4*p)}{_resta_latex('y', k)}$")
+            pasos.append(
+                f"Expandimos: $x^2{_termino_latex(-2*h, 'x')} + {_num_latex(h*h)} = "
+                f"{_num_latex(4*p)}y{_termino_latex(-4*p*k)}$"
+            )
+            pasos.append(
+                f"Reagrupamos: $x^2 + ({_num_latex(-2*h)})x + ({_num_latex(-4*p)})y + "
+                f"({_num_latex(h*h + 4*p*k)}) = 0$"
+            )
         else:
-            pasos.append(f"Partimos de: (y - {k})² = {4*p}(x - {h})")
-            pasos.append(f"Expandimos: y² - {2*k}y + {k*k} = {4*p}x - {4*p*h}")
-            pasos.append(f"Reagrupamos: y² + ({-2*k})y + ({-4*p})x + ({k*k + 4*p*h}) = 0")
+            pasos.append(f"Partimos de: ${_resta_latex('y', k)}^2 = {_num_latex(4*p)}{_resta_latex('x', h)}$")
+            pasos.append(
+                f"Expandimos: $y^2{_termino_latex(-2*k, 'y')} + {_num_latex(k*k)} = "
+                f"{_num_latex(4*p)}x{_termino_latex(-4*p*h)}$"
+            )
+            pasos.append(
+                f"Reagrupamos: $y^2 + ({_num_latex(-2*k)})y + ({_num_latex(-4*p)})x + "
+                f"({_num_latex(k*k + 4*p*h)}) = 0$"
+            )
         pasos.append("Esta es la ecuación general equivalente.")
 
     return pasos
@@ -336,6 +465,19 @@ def transformar_a_canonica(coeficientes: dict) -> dict:
     return resultado
 
 
+def _formatear_valor_geometrico(valor) -> str:
+    """Formatea para pantalla un elemento geometrico: numero, punto (tupla) o lista de puntos."""
+    if isinstance(valor, str):
+        return valor
+    if isinstance(valor, (int, float)):
+        return _num_latex(valor)
+    if isinstance(valor, tuple) and len(valor) == 2:
+        return f"({_num_latex(valor[0])}, {_num_latex(valor[1])})"
+    if isinstance(valor, list):
+        return ", ".join(_formatear_valor_geometrico(v) for v in valor)
+    return str(valor)
+
+
 def formatear_transformacion(resultado: dict) -> str:
     """Devuelve un string con el procedimiento completo, listo para mostrar en pantalla."""
     lineas = []
@@ -349,7 +491,9 @@ def formatear_transformacion(resultado: dict) -> str:
         lineas.append(f"  {paso}")
 
     if "ecuacion_canonica" in resultado:
-        lineas.append(f"\nEcuación canónica: {resultado['ecuacion_canonica']}")
+        lineas.append(
+            f"\nEcuación canónica: {resultado.get('ecuacion_canonica_latex', resultado['ecuacion_canonica'])}"
+        )
 
     if resultado.get("pasos_inversos"):
         lineas.append("\nProcedimiento inverso (canónica → general):")
@@ -361,7 +505,7 @@ def formatear_transformacion(resultado: dict) -> str:
                   "radio", "semieje_mayor", "semieje_menor",
                   "semieje_transverso", "semieje_conjugado", "directriz"):
         if clave in resultado:
-            lineas.append(f"  {clave}: {resultado[clave]}")
+            lineas.append(f"  {clave}: {_formatear_valor_geometrico(resultado[clave])}")
 
     lineas.append("=" * 55)
     return "\n".join(lineas)

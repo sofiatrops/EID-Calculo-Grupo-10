@@ -15,6 +15,7 @@ from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from modulos.analisis_limites import analizar_limites
 from modulos.grafica_funciones_tramos import _generar_puntos, _evaluar_funcion
+from interfaz.widget_ecuacion import EcuacionLatex
 
 
 class VistaLimites(ctk.CTkFrame):
@@ -23,6 +24,13 @@ class VistaLimites(ctk.CTkFrame):
         "salto": {"salto", "de salto", "primera especie"},
         "infinita": {"infinita", "segunda especie", "asintotica"},
         "ninguna": {"ninguna", "continua", "no hay discontinuidad", "sin discontinuidad"},
+    }
+
+    PALABRAS_CLAVE_JUSTIFICACION = {
+        "removible": ["factoriz", "cancel", "indetermin", "no esta definid"],
+        "salto": ["lateral", "distint", "no existe", "salto"],
+        "infinita": ["asintota", "denominador", "infinit"],
+        "ninguna": ["continua", "existe", "igual"],
     }
 
     def __init__(self, master=None, **kwargs):
@@ -60,18 +68,8 @@ class VistaLimites(ctk.CTkFrame):
             font=ctk.CTkFont(size=16, weight="bold"),
         ).grid(row=0, column=0, columnspan=2, padx=10, pady=(10, 5), sticky="w")
 
-        ctk.CTkLabel(
-            self.func_frame, text="f(x) =", font=ctk.CTkFont(size=14)
-        ).grid(row=1, column=0, padx=(10, 5), pady=(0, 10), sticky="ne")
-
-        self.func_expresion = ctk.CTkLabel(
-            self.func_frame,
-            text="",
-            font=ctk.CTkFont(size=14),
-            justify="left",
-            wraplength=700,
-        )
-        self.func_expresion.grid(row=1, column=1, padx=(0, 10), pady=(0, 10), sticky="w")
+        self.widget_func_expresion = EcuacionLatex(self.func_frame, altura_pulgadas=0.9)
+        self.widget_func_expresion.grid(row=1, column=0, columnspan=2, padx=10, pady=(0, 10), sticky="ew")
 
         # --- Section 2: Tabla de valores ---
         self.tabla_frame = ctk.CTkFrame(self.main_frame)
@@ -139,12 +137,8 @@ class VistaLimites(ctk.CTkFrame):
             font=ctk.CTkFont(size=16, weight="bold"),
         ).grid(row=0, column=0, padx=10, pady=(10, 5), sticky="w")
 
-        self.proc_text = ctk.CTkTextbox(
-            self.proc_frame, height=320, wrap="word",
-            font=ctk.CTkFont(size=13),
-            state="disabled",
-        )
-        self.proc_text.grid(row=1, column=0, padx=10, pady=(0, 10), sticky="ew")
+        self.widget_procedimiento = EcuacionLatex(self.proc_frame, altura_pulgadas=2.5, ancho_pulgadas=8.5)
+        self.widget_procedimiento.grid(row=1, column=0, padx=10, pady=(0, 10), sticky="ew")
 
         # --- Section 5: Campos de defensa ---
         self.defensa_frame = ctk.CTkFrame(self.main_frame)
@@ -219,6 +213,20 @@ class VistaLimites(ctk.CTkFrame):
             row=len(defensa_campos) + 3, column=1, columnspan=2, padx=(0, 10), pady=(8, 10), sticky="ew"
         )
 
+        self.feedback_justificacion = ctk.CTkLabel(
+            self.defensa_frame, text="", justify="left", wraplength=600, anchor="w",
+        )
+        self.feedback_justificacion.grid(
+            row=len(defensa_campos) + 4, column=1, columnspan=2, padx=(0, 10), pady=(0, 4), sticky="w"
+        )
+
+        self.feedback_respuesta_modelo = ctk.CTkLabel(
+            self.defensa_frame, text="", justify="left", wraplength=600, anchor="w",
+        )
+        self.feedback_respuesta_modelo.grid(
+            row=len(defensa_campos) + 5, column=1, columnspan=2, padx=(0, 10), pady=(0, 10), sticky="w"
+        )
+
     def _mostrar_grafica_vacia(self):
         self.ax.clear()
         self.ax.set_xlabel("x")
@@ -245,22 +253,20 @@ class VistaLimites(ctk.CTkFrame):
         self.resultado = None
         self.mostrar_respuestas = False
         self.boton_mostrar_respuestas.configure(text="Mostrar Respuestas")
-        self.func_expresion.configure(text="")
+        self.widget_func_expresion.mostrar("")
         for fila in self.tabla_labels:
             for lbl in fila:
                 lbl.configure(text="—")
         self._mostrar_grafica_vacia()
-        self.proc_text.configure(state="normal")
-        self.proc_text.delete("1.0", "end")
-        self.proc_text.configure(state="disabled", height=320)
+        self.widget_procedimiento.mostrar_parrafos([])
         self._limpiar_defensa()
 
     def _actualizar_funcion(self):
         r = self.resultado
-        texto = r["expresion"]
-        if "expresion_simplificada" in r:
-            texto += f"\nSimplificada: {r['expresion_simplificada']}"
-        self.func_expresion.configure(text=texto)
+        lineas = [r["expresion_latex"]]
+        if "expresion_simplificada_latex" in r:
+            lineas.append(r["expresion_simplificada_latex"])
+        self.widget_func_expresion.mostrar("\n".join(lineas))
 
     def _actualizar_tabla(self):
         tabla = self.resultado["tabla_valores"]
@@ -346,19 +352,7 @@ class VistaLimites(ctk.CTkFrame):
         self.canvas.draw()
 
     def _actualizar_procedimiento(self):
-        pasos = self.resultado["pasos_justificacion"]
-
-        self.proc_text.configure(state="normal")
-        self.proc_text.delete("1.0", "end")
-        for i, paso in enumerate(pasos):
-            self.proc_text.insert("end", paso)
-            if i < len(pasos) - 1:
-                self.proc_text.insert("end", "\n\n")
-        self.proc_text.configure(state="disabled")
-
-        lineas_estimadas = sum(max(1, (len(paso) // 70) + 1) + 1 for paso in pasos)
-        altura = min(max(280, lineas_estimadas * 24), 480)
-        self.proc_text.configure(height=altura)
+        self.widget_procedimiento.mostrar_parrafos(self.resultado["pasos_justificacion_latex"])
 
     def alternar_respuestas(self):
         if self.resultado is None:
@@ -375,6 +369,7 @@ class VistaLimites(ctk.CTkFrame):
         if not self.mostrar_respuestas:
             for feedback in self.defensa_feedback.values():
                 feedback.configure(text="")
+            self.feedback_respuesta_modelo.configure(text="")
             return
 
         r = self.resultado
@@ -389,11 +384,17 @@ class VistaLimites(ctk.CTkFrame):
         for clave, valor in valores.items():
             self.defensa_feedback[clave].configure(text=f"→ {valor}", text_color="#1e6fd9")
 
+        self.feedback_respuesta_modelo.configure(
+            text=self._respuesta_modelo_justificacion(), text_color="#1e6fd9"
+        )
+
     def _limpiar_defensa(self):
         for entry in self.defensa_entries.values():
             entry.delete(0, "end")
         for feedback in self.defensa_feedback.values():
             feedback.configure(text="")
+        self.feedback_justificacion.configure(text="")
+        self.feedback_respuesta_modelo.configure(text="")
         self.defensa_justificacion.delete("1.0", "end")
 
     def _normalizar(self, texto):
@@ -481,3 +482,73 @@ class VistaLimites(ctk.CTkFrame):
                 feedback.configure(text="✓ Correcto", text_color="green")
             else:
                 feedback.configure(text="✗ Revisar", text_color="red")
+
+        self.comprobar_justificacion()
+
+    def comprobar_justificacion(self):
+        """
+        No puede juzgar si la justificacion esta "bien" o "mal" (es texto
+        libre), pero revisa si menciona los conceptos clave esperados segun
+        el tipo de discontinuidad, a modo de chequeo de cobertura referencial.
+        """
+        if self.resultado is None:
+            return
+
+        texto = self._normalizar(self.defensa_justificacion.get("1.0", "end"))
+        claves = self.PALABRAS_CLAVE_JUSTIFICACION.get(self.resultado["tipo_discontinuidad"], [])
+
+        if texto == "":
+            self.feedback_justificacion.configure(text="vacío", text_color="orange")
+            return
+        if not claves:
+            self.feedback_justificacion.configure(text="", text_color="gray")
+            return
+
+        encontradas = [c for c in claves if c in texto]
+        faltantes = [c for c in claves if c not in texto]
+
+        if len(encontradas) == len(claves):
+            self.feedback_justificacion.configure(
+                text=f"✓ Menciona los {len(claves)} conceptos clave esperados para este caso.",
+                text_color="green",
+            )
+        else:
+            self.feedback_justificacion.configure(
+                text=(
+                    f"Menciona {len(encontradas)}/{len(claves)} conceptos clave esperados. "
+                    f"Podrías mencionar también: {', '.join(faltantes)}. "
+                    f"(Este chequeo solo verifica cobertura de conceptos, no corrige el contenido.)"
+                ),
+                text_color="orange",
+            )
+
+    def _respuesta_modelo_justificacion(self):
+        r = self.resultado
+        a = r["a"]
+        tipo = r["tipo_discontinuidad"]
+
+        if tipo == "removible":
+            return (
+                f"Respuesta modelo: al evaluar f({a}) por sustitución directa se obtiene una forma "
+                f"indeterminada 0/0. Factorizando y cancelando el factor común se simplifica la "
+                f"expresión y se calcula el límite, que existe y vale {r['lim_izquierdo']}. Sin embargo, "
+                f"f({a}) no está definida porque el denominador original se anula ahí, por lo que la "
+                f"discontinuidad es removible."
+            )
+        if tipo == "salto":
+            return (
+                f"Respuesta modelo: los límites laterales en x={a} son distintos "
+                f"(izquierdo={r['lim_izquierdo']}, derecho={r['lim_derecho']}), por lo que el límite no "
+                f"existe. Como ambos límites laterales son finitos pero diferentes, la discontinuidad "
+                f"es de tipo salto."
+            )
+        if tipo == "infinita":
+            return (
+                f"Respuesta modelo: al sustituir x={a} el denominador se anula y el numerador no, por "
+                f"lo que esta NO es una forma indeterminada. El valor de f(x) crece o decrece sin límite "
+                f"cerca de x={a}, lo que indica una asíntota vertical y una discontinuidad infinita."
+            )
+        return (
+            f"Respuesta modelo: los límites laterales en x={a} son iguales y coinciden con "
+            f"f({a})={r['f_a']}, por lo que la función es continua en ese punto (no hay discontinuidad)."
+        )

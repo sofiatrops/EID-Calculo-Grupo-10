@@ -17,6 +17,7 @@ from modulos.construccion_coeficientes import construir_coeficientes, formatear_
 from modulos.clasificador_conicas import ClasificadorDeConicas
 from modulos.transformacion_canonica import transformar_a_canonica, formatear_transformacion
 from modulos.graficador import GraficadorDeConicas
+from interfaz.widget_ecuacion import EcuacionLatex
 
 class VistaConicas(customtkinter.CTkFrame):
     CARACTERES_NUMERICOS = set("0123456789.,()- ")
@@ -49,27 +50,37 @@ class VistaConicas(customtkinter.CTkFrame):
     def crear_panel_izquierdo(self):
         self.frame_izquierdo = customtkinter.CTkFrame(self)
         self.frame_izquierdo.grid(row=1, column=0, padx=10, pady=10, sticky="nsew")
-        self.frame_izquierdo.grid_rowconfigure(3, weight=1)
+        self.frame_izquierdo.grid_rowconfigure(5, weight=1)
         self.frame_izquierdo.grid_columnconfigure(0, weight=1)
 
-        self.etiqueta_ecuacion_general = customtkinter.CTkLabel(self.frame_izquierdo, text="Ecuación General:")
-        self.etiqueta_ecuacion_general.grid(row=0, column=0, padx=10, pady=10, sticky="w")
+        customtkinter.CTkLabel(
+            self.frame_izquierdo, text="Ecuación General:",
+            font=customtkinter.CTkFont(size=13, weight="bold"),
+        ).grid(row=0, column=0, padx=10, pady=(10, 0), sticky="w")
+        self.widget_ecuacion_general = EcuacionLatex(self.frame_izquierdo, altura_pulgadas=0.55)
+        self.widget_ecuacion_general.grid(row=1, column=0, padx=10, pady=(0, 10), sticky="ew")
 
-        self.etiqueta_ecuacion_canonica = customtkinter.CTkLabel(self.frame_izquierdo, text="Ecuación Canónica:")
-        self.etiqueta_ecuacion_canonica.grid(row=1, column=0, padx=10, pady=10, sticky="w")
+        customtkinter.CTkLabel(
+            self.frame_izquierdo, text="Ecuación Canónica:",
+            font=customtkinter.CTkFont(size=13, weight="bold"),
+        ).grid(row=2, column=0, padx=10, pady=(0, 0), sticky="w")
+        self.widget_ecuacion_canonica = EcuacionLatex(self.frame_izquierdo, altura_pulgadas=0.55)
+        self.widget_ecuacion_canonica.grid(row=3, column=0, padx=10, pady=(0, 10), sticky="ew")
 
         self.etiqueta_procedimiento = customtkinter.CTkLabel(
             self.frame_izquierdo, text="Procedimiento Paso a Paso",
             font=customtkinter.CTkFont(size=14, weight="bold"),
         )
-        self.etiqueta_procedimiento.grid(row=2, column=0, padx=10, pady=(10, 0), sticky="w")
+        self.etiqueta_procedimiento.grid(row=4, column=0, padx=10, pady=(10, 0), sticky="w")
 
-        self.texto_procedimiento = customtkinter.CTkTextbox(
-            self.frame_izquierdo, wrap="word",
-            font=customtkinter.CTkFont(family="Courier", size=12),
+        self.frame_procedimiento_scroll = customtkinter.CTkScrollableFrame(self.frame_izquierdo)
+        self.frame_procedimiento_scroll.grid(row=5, column=0, padx=10, pady=(5, 10), sticky="nsew")
+        self.frame_procedimiento_scroll.grid_columnconfigure(0, weight=1)
+
+        self.widget_procedimiento = EcuacionLatex(
+            self.frame_procedimiento_scroll, altura_pulgadas=2.0, ancho_pulgadas=6.8,
         )
-        self.texto_procedimiento.grid(row=3, column=0, padx=10, pady=(5, 10), sticky="nsew")
-        self.texto_procedimiento.configure(state="disabled")
+        self.widget_procedimiento.grid(row=0, column=0, padx=0, pady=0, sticky="ew")
 
     def crear_panel_derecho(self):
         self.frame_derecho = customtkinter.CTkFrame(self)
@@ -196,11 +207,9 @@ class VistaConicas(customtkinter.CTkFrame):
 
         canonica = transformar_a_canonica(coeficientes)
 
-        self.etiqueta_ecuacion_general.configure(
-            text=f"Ecuación General: {coeficientes['ecuacion']}"
-        )
-        self.etiqueta_ecuacion_canonica.configure(
-            text=f"Ecuación Canónica: {canonica.get('ecuacion_canonica', canonica['tipo'])}"
+        self.widget_ecuacion_general.mostrar(coeficientes["ecuacion_latex"])
+        self.widget_ecuacion_canonica.mostrar(
+            canonica.get("ecuacion_canonica_latex", canonica["tipo"])
         )
 
         procedimiento = (
@@ -225,10 +234,7 @@ class VistaConicas(customtkinter.CTkFrame):
         self._limpiar_feedback_defensa()
 
     def _mostrar_procedimiento(self, texto):
-        self.texto_procedimiento.configure(state="normal")
-        self.texto_procedimiento.delete("1.0", "end")
-        self.texto_procedimiento.insert("1.0", texto)
-        self.texto_procedimiento.configure(state="disabled")
+        self.widget_procedimiento.mostrar_parrafos(texto.split("\n"), ancho_linea=80)
 
     def _graficar_canonica(self, canonica):
         self.eje.clear()
@@ -537,9 +543,9 @@ class VistaConicas(customtkinter.CTkFrame):
     def limpiar_campos(self):
         self.limpiar_error()
         self._mostrar_procedimiento("")
-        self.etiqueta_ecuacion_general.configure(text="Ecuación General:")
-        self.etiqueta_ecuacion_canonica.configure(text="Ecuación Canónica:")
-        
+        self.widget_ecuacion_general.mostrar("")
+        self.widget_ecuacion_canonica.mostrar("")
+
         self.entrada_centro.delete(0, "end")
         self.entrada_vertices.delete(0, "end")
         self.entrada_focos.delete(0, "end")

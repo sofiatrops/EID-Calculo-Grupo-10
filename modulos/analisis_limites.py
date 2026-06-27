@@ -17,6 +17,11 @@ def _evaluar_caso_2(x, a, d5):
     return (d5 + 1) / (x - a)
 
 
+def _inf_a_latex(valor_cualitativo):
+    """Convierte '-inf'/'+inf'/'0' a sintaxis LaTeX ('-\\infty'/'+\\infty'/'0')."""
+    return valor_cualitativo.replace("inf", r"\infty")
+
+
 def analizar_limites(rut_str: str) -> dict:
     resultado = generar_funcion_tramos(rut_str)
     if "error" in resultado:
@@ -30,28 +35,58 @@ def analizar_limites(rut_str: str) -> dict:
 
     tabla_valores = []
     pasos_justificacion = []
+    pasos_justificacion_latex = []
 
     nombre_caso = {
         0: "discontinuidad removible",
         1: "discontinuidad de salto",
         2: "discontinuidad infinita",
     }[caso]
-    pasos_justificacion.append(
+    paso_0 = (
         f"Paso 0: Regla de selección del caso. d8 = {d8}, d8 mod 3 = {residuo} "
         f"-> se genera el caso de {nombre_caso}."
     )
+    pasos_justificacion.append(paso_0)
+    pasos_justificacion_latex.append(paso_0)
 
     if caso == 0:
         expresion_simplificada = f"f(x) = x + {d1},  x != {a}"
+        expresion_simplificada_latex = rf"$f(x) = x + {d1}$,   $x \neq {a}$"
 
         pasos_justificacion.append(
-            f"Paso 1: Factorizar el numerador. "
-            f"f(x) = (x - {a})(x + {d1}) / (x - {a})"
+            f"Paso 1: Intentar evaluar f({a}) por sustitución directa. "
+            f"f({a}) = ({a} - {a})({a} + {d1}) / ({a} - {a}) = 0 / 0: "
+            f"forma indeterminada. No se puede concluir el límite sustituyendo "
+            f"directamente; hay que simplificar la expresión algebraicamente "
+            f"primero (factorizando, o multiplicando por el conjugado si la "
+            f"expresión tuviera raíces)."
         )
+        pasos_justificacion_latex.append(
+            f"Paso 1: Intentar evaluar $f({a})$ por sustitución directa: "
+            rf"$f({a}) = \frac{{({a}-{a})({a}+{d1})}}{{{a}-{a}}} = \frac{{0}}{{0}}$: "
+            f"forma indeterminada. No se puede concluir el límite sustituyendo "
+            f"directamente; hay que simplificar la expresión algebraicamente "
+            f"primero (factorizando, o multiplicando por el conjugado si la "
+            f"expresión tuviera raíces)."
+        )
+
         pasos_justificacion.append(
-            f"Paso 2: Cancelar el factor (x - {a}) del numerador y denominador, "
+            f"Paso 2: Como numerador y denominador comparten el factor (x - {a}), "
+            f"factorizamos. f(x) = (x - {a})(x + {d1}) / (x - {a})"
+        )
+        pasos_justificacion_latex.append(
+            f"Paso 2: Como numerador y denominador comparten el factor $(x-{a})$, "
+            rf"factorizamos: $f(x) = \frac{{(x-{a})(x+{d1})}}{{x-{a}}}$"
+        )
+
+        pasos_justificacion.append(
+            f"Paso 3: Cancelar el factor (x - {a}) del numerador y denominador, "
             f"válido para todo x != {a}. "
             f"Queda f(x) = x + {d1}"
+        )
+        pasos_justificacion_latex.append(
+            f"Paso 3: Cancelar el factor $(x-{a})$ del numerador y denominador, "
+            f"válido para todo $x \\neq {a}$. Queda $f(x) = x + {d1}$"
         )
 
         lim_izq = a + d1
@@ -59,28 +94,55 @@ def analizar_limites(rut_str: str) -> dict:
         limite_existe = True
         f_a_definida = False
         razon_no_definida = f"f({a}) no está definida porque el denominador (x - {a}) se anula en x = {a}"
+        razon_no_definida_latex = (
+            f"$f({a})$ no está definida porque el denominador $(x-{a})$ se anula en $x = {a}$"
+        )
         continua = False
         tipo_discontinuidad = "removible"
 
         pasos_justificacion.append(
-            f"Paso 3: Calcular límite lateral izquierdo. "
+            f"Paso 4: Calcular límite lateral izquierdo. "
             f"lím x->{a}- f(x) = lím x->{a}- (x + {d1}) = {a} + {d1} = {lim_izq}"
         )
+        pasos_justificacion_latex.append(
+            f"Paso 4: Calcular límite lateral izquierdo: "
+            rf"$\lim_{{x \to {a}^-}} f(x) = \lim_{{x \to {a}^-}} (x + {d1}) = {a} + {d1} = {lim_izq}$"
+        )
+
         pasos_justificacion.append(
-            f"Paso 4: Calcular límite lateral derecho. "
+            f"Paso 5: Calcular límite lateral derecho. "
             f"lím x->{a}+ f(x) = lím x->{a}+ (x + {d1}) = {a} + {d1} = {lim_der}"
         )
+        pasos_justificacion_latex.append(
+            f"Paso 5: Calcular límite lateral derecho: "
+            rf"$\lim_{{x \to {a}^+}} f(x) = \lim_{{x \to {a}^+}} (x + {d1}) = {a} + {d1} = {lim_der}$"
+        )
+
         pasos_justificacion.append(
-            f"Paso 5: Como ambos límites laterales son iguales ({lim_izq}), "
+            f"Paso 6: Como ambos límites laterales son iguales ({lim_izq}), "
             f"el límite existe y vale {lim_izq}."
         )
-        pasos_justificacion.append(
-            f"Paso 6: {razon_no_definida}. No se cumple que lím f(x) = f({a})."
+        pasos_justificacion_latex.append(
+            f"Paso 6: Como ambos límites laterales son iguales (${lim_izq}$), "
+            f"el límite existe y vale ${lim_izq}$."
         )
+
         pasos_justificacion.append(
-            f"Paso 7: La discontinuidad es de tipo REMOVIBLE (evitable), "
+            f"Paso 7: {razon_no_definida}. No se cumple que lím f(x) = f({a})."
+        )
+        pasos_justificacion_latex.append(
+            f"Paso 7: {razon_no_definida_latex}. No se cumple que $\\lim f(x) = f({a})$."
+        )
+
+        pasos_justificacion.append(
+            f"Paso 8: La discontinuidad es de tipo REMOVIBLE (evitable), "
             f"ya que el límite existe pero f({a}) no está definida. "
             f"Se puede redefinir f({a}) = {lim_izq} para hacer la función continua."
+        )
+        pasos_justificacion_latex.append(
+            f"Paso 8: La discontinuidad es de tipo REMOVIBLE (evitable), "
+            f"ya que el límite existe pero $f({a})$ no está definida. "
+            f"Se puede redefinir $f({a}) = {lim_izq}$ para hacer la función continua."
         )
 
         for delta in [1, 0.1, 0.01, 0.001]:
@@ -97,6 +159,10 @@ def analizar_limites(rut_str: str) -> dict:
             f"Paso 1: Identificar la función por tramos. "
             f"f(x) = x + {d2}  si x < {a},  f(x) = x + {d4}  si x >= {a}"
         )
+        pasos_justificacion_latex.append(
+            f"Paso 1: Identificar la función por tramos: "
+            f"$f(x) = x + {d2}$ si $x < {a}$,   $f(x) = x + {d4}$ si $x \\geq {a}$"
+        )
 
         lim_izq = a + d2
         lim_der = a + d4
@@ -110,10 +176,21 @@ def analizar_limites(rut_str: str) -> dict:
             f"Usamos la rama x < {a}: f(x) = x + {d2}. "
             f"lím x->{a}- f(x) = {a} + {d2} = {lim_izq}"
         )
+        pasos_justificacion_latex.append(
+            f"Paso 2: Calcular límite lateral izquierdo ($x \\to {a}^-$). "
+            f"Usamos la rama $x < {a}$: $f(x) = x + {d2}$. "
+            rf"$\lim_{{x \to {a}^-}} f(x) = {a} + {d2} = {lim_izq}$"
+        )
+
         pasos_justificacion.append(
             f"Paso 3: Calcular límite lateral derecho (x -> {a}+). "
             f"Usamos la rama x >= {a}: f(x) = x + {d4}. "
             f"lím x->{a}+ f(x) = {a} + {d4} = {lim_der}"
+        )
+        pasos_justificacion_latex.append(
+            f"Paso 3: Calcular límite lateral derecho ($x \\to {a}^+$). "
+            f"Usamos la rama $x \\geq {a}$: $f(x) = x + {d4}$. "
+            rf"$\lim_{{x \to {a}^+}} f(x) = {a} + {d4} = {lim_der}$"
         )
 
         if limite_existe:
@@ -121,15 +198,27 @@ def analizar_limites(rut_str: str) -> dict:
                 f"Paso 4: Ambos límites laterales son iguales ({lim_izq}). "
                 f"El límite existe y vale {lim_izq}."
             )
+            pasos_justificacion_latex.append(
+                f"Paso 4: Ambos límites laterales son iguales (${lim_izq}$). "
+                f"El límite existe y vale ${lim_izq}$."
+            )
             if continua:
                 pasos_justificacion.append(
                     f"Paso 5: lím f(x) = {lim_izq} = f({a}) = {valor_f_a}. "
                     f"La función es CONTINUA en x = {a}."
                 )
+                pasos_justificacion_latex.append(
+                    f"Paso 5: $\\lim f(x) = {lim_izq} = f({a}) = {valor_f_a}$. "
+                    f"La función es CONTINUA en $x = {a}$."
+                )
                 tipo_discontinuidad = "ninguna"
             else:
                 pasos_justificacion.append(
                     f"Paso 5: lím f(x) = {lim_izq} != f({a}) = {valor_f_a}. "
+                    f"Discontinuidad REMOVIBLE."
+                )
+                pasos_justificacion_latex.append(
+                    f"Paso 5: $\\lim f(x) = {lim_izq} \\neq f({a}) = {valor_f_a}$. "
                     f"Discontinuidad REMOVIBLE."
                 )
                 tipo_discontinuidad = "removible"
@@ -139,10 +228,19 @@ def analizar_limites(rut_str: str) -> dict:
                 f"(izquierdo = {lim_izq}, derecho = {lim_der}). "
                 f"El límite NO existe."
             )
+            pasos_justificacion_latex.append(
+                f"Paso 4: Los límites laterales son DISTINTOS "
+                f"(izquierdo $= {lim_izq}$, derecho $= {lim_der}$). "
+                f"El límite NO existe."
+            )
             tipo_discontinuidad = "salto"
             pasos_justificacion.append(
                 f"Paso 5: La discontinuidad es de tipo SALTO (de primera especie). "
                 f"Diferencia: |{lim_izq} - ({lim_der})| = {abs(lim_izq - lim_der)}"
+            )
+            pasos_justificacion_latex.append(
+                f"Paso 5: La discontinuidad es de tipo SALTO (de primera especie). "
+                f"Diferencia: $|{lim_izq} - ({lim_der})| = {abs(lim_izq - lim_der)}$"
             )
 
         for delta in [1, 0.1, 0.01, 0.001]:
@@ -162,6 +260,10 @@ def analizar_limites(rut_str: str) -> dict:
             f"Paso 1: Identificar la función. "
             f"f(x) = ({d5 + 1}) / (x - {a})"
         )
+        pasos_justificacion_latex.append(
+            f"Paso 1: Identificar la función: "
+            rf"$f(x) = \frac{{{d5 + 1}}}{{x-{a}}}$"
+        )
 
         lim_izq_cualitativo = None
         lim_der_cualitativo = None
@@ -179,35 +281,84 @@ def analizar_limites(rut_str: str) -> dict:
         limite_existe = False
         f_a_definida = False
         razon_no_definida = f"f({a}) no está definida porque el denominador (x - {a}) se anula en x = {a}"
+        razon_no_definida_latex = (
+            f"$f({a})$ no está definida porque el denominador $(x-{a})$ se anula en $x = {a}$"
+        )
         continua = False
         tipo_discontinuidad = "infinita"
 
         signo_num = "+" if (d5 + 1) > 0 else "-"
         pasos_justificacion.append(
-            f"Paso 2: El numerador ({d5 + 1}) es {signo_num}. "
+            f"Paso 2: Al sustituir x = {a} se obtiene ({d5 + 1}) / 0. A diferencia "
+            f"del caso 0/0, aquí el numerador NO es cero, por lo que esta NO es "
+            f"una forma indeterminada: no hace falta factorizar ni usar el "
+            f"conjugado, el resultado ya indica directamente una asíntota "
+            f"vertical en x = {a}."
+        )
+        pasos_justificacion_latex.append(
+            f"Paso 2: Al sustituir $x = {a}$ se obtiene "
+            rf"$\frac{{{d5 + 1}}}{{0}}$. A diferencia del caso $\frac{{0}}{{0}}$, "
+            f"aquí el numerador NO es cero, por lo que esta NO es una forma "
+            f"indeterminada: no hace falta factorizar ni usar el conjugado, el "
+            f"resultado ya indica directamente una asíntota vertical en $x = {a}$."
+        )
+
+        pasos_justificacion.append(
+            f"Paso 3: El numerador ({d5 + 1}) es {signo_num}. "
             f"Al acercarnos a x = {a}, el denominador tiende a 0, "
             f"por lo que |f(x)| -> +inf."
         )
+        pasos_justificacion_latex.append(
+            f"Paso 3: El numerador (${d5 + 1}$) es {signo_num}. "
+            f"Al acercarnos a $x = {a}$, el denominador tiende a $0$, "
+            f"por lo que $|f(x)| \\to +\\infty$."
+        )
+
         pasos_justificacion.append(
-            f"Paso 3: Calcular límite lateral izquierdo (x -> {a}-). "
+            f"Paso 4: Calcular límite lateral izquierdo (x -> {a}-). "
             f"Si x < {a}, entonces (x - {a}) < 0. "
             f"Por lo tanto, f(x) -> {lim_izq_cualitativo}."
         )
+        pasos_justificacion_latex.append(
+            f"Paso 4: Calcular límite lateral izquierdo ($x \\to {a}^-$). "
+            f"Si $x < {a}$, entonces $(x-{a}) < 0$. "
+            f"Por lo tanto, $f(x) \\to {_inf_a_latex(lim_izq_cualitativo)}$."
+        )
+
         pasos_justificacion.append(
-            f"Paso 4: Calcular límite lateral derecho (x -> {a}+). "
+            f"Paso 5: Calcular límite lateral derecho (x -> {a}+). "
             f"Si x > {a}, entonces (x - {a}) > 0. "
             f"Por lo tanto, f(x) -> {lim_der_cualitativo}."
         )
+        pasos_justificacion_latex.append(
+            f"Paso 5: Calcular límite lateral derecho ($x \\to {a}^+$). "
+            f"Si $x > {a}$, entonces $(x-{a}) > 0$. "
+            f"Por lo tanto, $f(x) \\to {_inf_a_latex(lim_der_cualitativo)}$."
+        )
+
         pasos_justificacion.append(
-            f"Paso 5: Los límites laterales son distintos y al menos uno tiende a +/-inf. "
+            f"Paso 6: Los límites laterales son distintos y al menos uno tiende a +/-inf. "
             f"El límite NO existe."
         )
-        pasos_justificacion.append(
-            f"Paso 6: {razon_no_definida}."
+        pasos_justificacion_latex.append(
+            f"Paso 6: Los límites laterales son distintos y al menos uno tiende a "
+            f"$\\pm\\infty$. El límite NO existe."
         )
+
         pasos_justificacion.append(
-            f"Paso 7: La discontinuidad es de tipo INFINITA (de segunda especie), "
+            f"Paso 7: {razon_no_definida}."
+        )
+        pasos_justificacion_latex.append(
+            f"Paso 7: {razon_no_definida_latex}."
+        )
+
+        pasos_justificacion.append(
+            f"Paso 8: La discontinuidad es de tipo INFINITA (de segunda especie), "
             f"con asíntota vertical en x = {a}."
+        )
+        pasos_justificacion_latex.append(
+            f"Paso 8: La discontinuidad es de tipo INFINITA (de segunda especie), "
+            f"con asíntota vertical en $x = {a}$."
         )
 
         for delta in [1, 0.1, 0.01, 0.001]:
@@ -225,6 +376,7 @@ def analizar_limites(rut_str: str) -> dict:
         "a": a,
         "caso": caso,
         "expresion": resultado["expresion"],
+        "expresion_latex": resultado["expresion_latex"],
         "tramos": resultado["tramos"],
         "lim_izquierdo": lim_izq if caso != 2 else lim_izq_cualitativo,
         "lim_derecho": lim_der if caso != 2 else lim_der_cualitativo,
@@ -235,10 +387,12 @@ def analizar_limites(rut_str: str) -> dict:
         "tipo_discontinuidad": tipo_discontinuidad,
         "tabla_valores": tabla_valores,
         "pasos_justificacion": pasos_justificacion,
+        "pasos_justificacion_latex": pasos_justificacion_latex,
     }
 
     if caso == 0:
         resultado_analisis["expresion_simplificada"] = expresion_simplificada
+        resultado_analisis["expresion_simplificada_latex"] = expresion_simplificada_latex
 
     return resultado_analisis
 
