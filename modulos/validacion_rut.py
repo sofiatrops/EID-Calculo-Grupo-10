@@ -101,9 +101,9 @@ def validar_rut(rut_str: str) -> dict:
         resultado["mensaje"] = f"RUT {cuerpo}-{dv_ingresado} es VÁLIDO."
     else:
         resultado["mensaje"] = (
-            f"RUT {cuerpo}-{dv_ingresado} es INVÁLIDO. "
-            f"El dígito verificador esperado es '{resultado['dv_calculado']}', "
-            f"pero se ingresó '{dv_ingresado}'."
+            f"Este RUT no se puede analizar ni graficar: '{cuerpo}-{dv_ingresado}' es INVÁLIDO "
+            f"(se ingresó el dígito verificador '{dv_ingresado}'). "
+            f"Recomendación: usa {cuerpo}-{resultado['dv_calculado']}."
         )
 
     return resultado
